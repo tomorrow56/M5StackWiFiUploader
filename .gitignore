@@ -1,0 +1,35 @@
+# Arduino IDE
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.exe
+*.out
+*.app
+*.elf
+*.hex
+*.bin
+
+# Build directories
+build/
+dist/
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies
+node_modules/
+*.zip
+
+# Temporary files
+*.tmp
+*.bak
