@@ -8,6 +8,7 @@
 
 M5StackWiFiUploader::M5StackWiFiUploader(uint16_t port)
     : _webServer(nullptr),
+      _wsHandler(nullptr),
       _port(port),
       _isRunning(false),
       _uploadPath("/uploads"),
@@ -33,6 +34,13 @@ M5StackWiFiUploader::~M5StackWiFiUploader() {
 // ============================================================================
 
 bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
+    if (_webSocketEnabled) {
+        _wsHandler = new WebSocketHandler(DEFAULT_WS_PORT);
+        _wsHandler->begin();
+        _wsHandler->onData([this](uint8_t clientId, const uint8_t* data, size_t length) {
+            // WebSocketデータ受信処理
+        });
+    }
     _port = port;
     _uploadPath = uploadPath;
 
@@ -72,12 +80,17 @@ bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
 }
 
 void M5StackWiFiUploader::handleClient() {
-    if (_isRunning && _webServer != nullptr) {
-        _webServer->handleClient();
-    }
+    if (!_isRunning) return;
+    if (_webServer) _webServer->handleClient();
+    if (_wsHandler) _wsHandler->handleClient();
 }
 
 void M5StackWiFiUploader::end() {
+    if (_wsHandler) {
+        _wsHandler->end();
+        delete _wsHandler;
+        _wsHandler = nullptr;
+    }
     if (_webServer != nullptr) {
         _closeAllSessions();
         _webServer->stop();

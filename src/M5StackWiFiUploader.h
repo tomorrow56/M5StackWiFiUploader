@@ -3,6 +3,10 @@
 
 #include <Arduino.h>
 #include <WebServer.h>
+#include "ErrorHandler.h"
+#include "RetryManager.h"
+#include "ProgressTracker.h"
+#include "WebSocketHandler.h"
 #include <FS.h>
 #include <SD.h>
 #include <functional>
@@ -204,6 +208,10 @@ private:
     // ========================================================================
     
     WebServer* _webServer;
+    ErrorHandler _errorHandler;
+    RetryManager _retryManager;
+    ProgressTracker _progressTracker;
+    WebSocketHandler* _wsHandler;
     uint16_t _port;
     bool _isRunning;
     String _uploadPath;
