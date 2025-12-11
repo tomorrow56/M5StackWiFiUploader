@@ -6,6 +6,17 @@
 #include <vector>
 
 /**
+ * @brief ファイル情報構造体
+ */
+struct FileInfo {
+    String name;          // ファイル名
+    uint32_t size;        // ファイルサイズ（バイト）
+    uint32_t modified;    // 最終更新時刻（UNIXタイムスタンプ）
+    bool isDirectory;     // ディレクトリフラグ
+    String extension;     // 拡張子
+};
+
+/**
  * @brief SDカード操作を管理するクラス
  * 
  * ファイルの読み書き、ディレクトリ管理、容量チェック等の
@@ -118,6 +129,21 @@ public:
      * @return ファイル名のベクタ
      */
     static std::vector<String> listFiles(const char* dirpath, bool includeDir = false);
+
+    /**
+     * @brief ディレクトリ内のファイル詳細情報一覧を取得
+     * @param dirpath ディレクトリパス
+     * @param includeDir true=ディレクトリも含める
+     * @return ファイル情報のベクタ
+     */
+    static std::vector<FileInfo> listFilesWithInfo(const char* dirpath, bool includeDir = false);
+
+    /**
+     * @brief ファイルの詳細情報を取得
+     * @param filepath ファイルパス
+     * @return ファイル情報
+     */
+    static FileInfo getFileInfo(const char* filepath);
 
     /**
      * @brief ディレクトリ内のファイル数を取得

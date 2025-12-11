@@ -377,3 +377,67 @@ uint32_t SDCardManager::getLastModified(const char* filepath) {
     
     return lastWrite;
 }
+
+// ============================================================================
+// ファイル詳細情報取得
+// ============================================================================
+
+std::vector<FileInfo> SDCardManager::listFilesWithInfo(const char* dirpath, bool includeDir) {
+    std::vector<FileInfo> fileInfoList;
+    
+    if (!_initialized) return fileInfoList;
+    
+    String normalizedPath = normalizePath(dirpath);
+    File dir = SD.open(normalizedPath.c_str());
+    
+    if (!dir || !dir.isDirectory()) {
+        if (dir) dir.close();
+        return fileInfoList;
+    }
+    
+    File entry;
+    while (entry = dir.openNextFile()) {
+        bool isDir = entry.isDirectory();
+        
+        if (!includeDir && isDir) {
+            entry.close();
+            continue;
+        }
+        
+        FileInfo info;
+        info.name = String(entry.name());
+        info.size = isDir ? 0 : entry.size();
+        info.modified = getLastModified(entry.name());
+        info.isDirectory = isDir;
+        info.extension = isDir ? "" : getFileExtension(entry.name());
+        
+        fileInfoList.push_back(info);
+        entry.close();
+    }
+    
+    dir.close();
+    return fileInfoList;
+}
+
+FileInfo SDCardManager::getFileInfo(const char* filepath) {
+    FileInfo info;
+    info.name = "";
+    info.size = 0;
+    info.modified = 0;
+    info.isDirectory = false;
+    info.extension = "";
+    
+    if (!_initialized || !filepath) return info;
+    
+    File file = SD.open(filepath);
+    if (!file) return info;
+    
+    info.name = String(file.name());
+    info.isDirectory = file.isDirectory();
+    info.size = info.isDirectory ? 0 : file.size();
+    info.modified = getLastModified(filepath);
+    info.extension = info.isDirectory ? "" : getFileExtension(filepath);
+    
+    file.close();
+    return info;
+}

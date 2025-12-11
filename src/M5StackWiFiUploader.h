@@ -241,6 +241,8 @@ private:
     void _handleListFiles();
     void _handleDeleteFile();
     void _handleStatus();
+    void _handleFileListDetailed();
+    void _handleFileDownload();
     void _handleRoot();
 
     // ファイル操作

@@ -59,6 +59,8 @@ bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
     _webServer->on("/", HTTP_GET, [this]() { _handleRoot(); });
     _webServer->on("/api/upload", HTTP_POST, [this]() { _handleUploadHTTP(); });
     _webServer->on("/api/files", HTTP_GET, [this]() { _handleListFiles(); });
+    _webServer->on("/api/files/list", HTTP_GET, [this]() { _handleFileListDetailed(); });
+    _webServer->on("/api/download", HTTP_GET, [this]() { _handleFileDownload(); });
     _webServer->on("/api/delete", HTTP_POST, [this]() { _handleDeleteFile(); });
     _webServer->on("/api/status", HTTP_GET, [this]() { _handleStatus(); });
 
@@ -224,22 +226,37 @@ void M5StackWiFiUploader::_handleRoot() {
     <title>M5Stack WiFi Uploader</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1 { color: #333; }
+        h2 { color: #555; margin-top: 30px; }
         .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; margin: 20px 0; border-radius: 4px; cursor: pointer; }
         .upload-area:hover { background: #f9f9f9; }
         .upload-area.dragover { background: #e3f2fd; border-color: #2196F3; }
         input[type="file"] { display: none; }
-        button { background: #2196F3; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        button { background: #2196F3; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 2px; }
         button:hover { background: #1976D2; }
+        button.danger { background: #f44336; }
+        button.danger:hover { background: #d32f2f; }
+        button.success { background: #4CAF50; }
+        button.success:hover { background: #388E3C; }
         .file-list { margin-top: 20px; }
-        .file-item { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .file-table { width: 100%; border-collapse: collapse; }
+        .file-table th, .file-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        .file-table th { background: #f5f5f5; font-weight: bold; }
+        .file-table tr:hover { background: #f9f9f9; }
+        .file-name { font-weight: 500; color: #2196F3; cursor: pointer; }
+        .file-name:hover { text-decoration: underline; }
+        .file-size { color: #666; }
+        .file-date { color: #999; font-size: 0.9em; }
         .progress { width: 100%; height: 20px; background: #e0e0e0; border-radius: 4px; margin: 10px 0; overflow: hidden; }
         .progress-bar { height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s; }
         .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
         .status.info { background: #e3f2fd; color: #1976D2; }
         .status.success { background: #e8f5e9; color: #388E3C; }
         .status.error { background: #ffebee; color: #C62828; }
+        .actions { display: flex; gap: 5px; }
+        .no-files { text-align: center; padding: 20px; color: #999; }
+        .loading { text-align: center; padding: 20px; }
     </style>
 </head>
 <body>
@@ -257,8 +274,9 @@ void M5StackWiFiUploader::_handleRoot() {
         <div id="uploadProgress"></div>
 
         <div class="file-list">
-            <h2>アップロード済みファイル</h2>
-            <div id="filesList"></div>
+            <h2>SDカード内のファイル</h2>
+            <button onclick="loadFilesList()" class="success">更新</button>
+            <div id="filesList" class="loading">読み込み中...</div>
         </div>
     </div>
 
@@ -269,7 +287,6 @@ void M5StackWiFiUploader::_handleRoot() {
         const progressDiv = document.getElementById('uploadProgress');
         const filesListDiv = document.getElementById('filesList');
 
-        // ドラッグ&ドロップイベント
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
@@ -302,7 +319,7 @@ void M5StackWiFiUploader::_handleRoot() {
             const progressId = 'progress-' + Date.now();
             const progressHTML = `
                 <div id="${progressId}">
-                    <p>${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</p>
+                    <p>${file.name} (${formatFileSize(file.size)})</p>
                     <div class="progress">
                         <div class="progress-bar" id="${progressId}-bar"></div>
                     </div>
@@ -339,24 +356,55 @@ void M5StackWiFiUploader::_handleRoot() {
         }
 
         function loadFilesList() {
-            fetch('/api/files')
+            filesListDiv.innerHTML = '<div class="loading">読み込み中...</div>';
+            
+            fetch('/api/files/list')
                 .then(response => response.json())
                 .then(data => {
                     filesListDiv.innerHTML = '';
                     if (data.files && data.files.length > 0) {
+                        const table = document.createElement('table');
+                        table.className = 'file-table';
+                        table.innerHTML = `
+                            <thead>
+                                <tr>
+                                    <th>ファイル名</th>
+                                    <th>サイズ</th>
+                                    <th>更新日時</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="filesTableBody"></tbody>
+                        `;
+                        filesListDiv.appendChild(table);
+                        
+                        const tbody = document.getElementById('filesTableBody');
                         data.files.forEach(file => {
-                            const fileItem = document.createElement('div');
-                            fileItem.className = 'file-item';
-                            fileItem.innerHTML = `
-                                <span>${file}</span>
-                                <button onclick="deleteFile('${file}')">削除</button>
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td><span class="file-name" onclick="downloadFile('${file.name}')">${file.name}</span></td>
+                                <td class="file-size">${formatFileSize(file.size)}</td>
+                                <td class="file-date">${formatDate(file.modified)}</td>
+                                <td class="actions">
+                                    <button onclick="downloadFile('${file.name}')" class="success">ダウンロード</button>
+                                    <button onclick="deleteFile('${file.name}')" class="danger">削除</button>
+                                </td>
                             `;
-                            filesListDiv.appendChild(fileItem);
+                            tbody.appendChild(row);
                         });
                     } else {
-                        filesListDiv.innerHTML = '<p>ファイルがありません</p>';
+                        filesListDiv.innerHTML = '<div class="no-files">ファイルがありません</div>';
                     }
+                })
+                .catch(error => {
+                    filesListDiv.innerHTML = '<div class="no-files">ファイル一覧の取得に失敗しました</div>';
+                    showStatus('error', 'ファイル一覧の取得に失敗しました');
                 });
+        }
+
+        function downloadFile(filename) {
+            window.location.href = `/api/download?filename=${encodeURIComponent(filename)}`;
+            showStatus('info', `${filename} をダウンロード中...`);
         }
 
         function deleteFile(filename) {
@@ -378,6 +426,25 @@ void M5StackWiFiUploader::_handleRoot() {
             }
         }
 
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp || timestamp === 0) return '-';
+            const date = new Date(timestamp * 1000);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
+        }
+
         function showStatus(type, message) {
             const status = document.createElement('div');
             status.className = 'status ' + type;
@@ -386,7 +453,6 @@ void M5StackWiFiUploader::_handleRoot() {
             setTimeout(() => status.remove(), 5000);
         }
 
-        // 初期ロード
         loadFilesList();
     </script>
 </body>
@@ -553,6 +619,73 @@ void M5StackWiFiUploader::_handleStatus() {
     json += "}";
 
     _webServer->send(200, "application/json", json);
+}
+
+void M5StackWiFiUploader::_handleFileListDetailed() {
+    _log(3, "Handling detailed file list request");
+    
+    std::vector<FileInfo> files = SDCardManager::listFilesWithInfo(_uploadPath.c_str(), false);
+    
+    String json = "{";
+    json += "\"files\": [";
+    
+    for (size_t i = 0; i < files.size(); i++) {
+        if (i > 0) json += ", ";
+        json += "{";
+        json += "\"name\": \"" + files[i].name + "\", ";
+        json += "\"size\": " + String(files[i].size) + ", ";
+        json += "\"modified\": " + String(files[i].modified) + ", ";
+        json += "\"isDirectory\": " + String(files[i].isDirectory ? "true" : "false") + ", ";
+        json += "\"extension\": \"" + files[i].extension + "\"";
+        json += "}";
+    }
+    
+    json += "], ";
+    json += "\"total\": " + String(files.size());
+    json += "}";
+    
+    _webServer->send(200, "application/json", json);
+}
+
+void M5StackWiFiUploader::_handleFileDownload() {
+    if (!_webServer->hasArg("filename")) {
+        _sendJSONResponse(false, "Missing filename parameter", nullptr);
+        return;
+    }
+    
+    String filename = _webServer->arg("filename");
+    String fullPath = _uploadPath + "/" + filename;
+    
+    _log(3, "Download request for: %s", filename.c_str());
+    
+    // パストラバーサル攻撃を防止
+    if (filename.indexOf("..") >= 0 || filename.indexOf("/") >= 0 || filename.indexOf("\\") >= 0) {
+        _log(1, "Invalid filename (path traversal attempt): %s", filename.c_str());
+        _sendJSONResponse(false, "Invalid filename", filename.c_str());
+        return;
+    }
+    
+    if (!SDCardManager::fileExists(fullPath.c_str())) {
+        _log(1, "File not found: %s", fullPath.c_str());
+        _sendJSONResponse(false, "File not found", filename.c_str());
+        return;
+    }
+    
+    File file = SD.open(fullPath.c_str(), FILE_READ);
+    if (!file) {
+        _log(1, "Failed to open file: %s", fullPath.c_str());
+        _sendJSONResponse(false, "Failed to open file", filename.c_str());
+        return;
+    }
+    
+    String contentType = _getContentType(filename.c_str());
+    size_t fileSize = file.size();
+    
+    _webServer->sendHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+    _webServer->streamFile(file, contentType);
+    
+    file.close();
+    _log(3, "File download completed: %s (%d bytes)", filename.c_str(), fileSize);
 }
 
 // ============================================================================
