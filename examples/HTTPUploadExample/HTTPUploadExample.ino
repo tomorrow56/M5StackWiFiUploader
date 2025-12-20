@@ -195,8 +195,12 @@ void setup() {
         uploader.setDebugLevel(3);
         
         // 許可する拡張子を設定
-        const char* extensions[] = {"jpg", "jpeg", "png", "gif", "bin", "txt", "dat"};
-        uploader.setAllowedExtensions(extensions, 7);
+        const char* extensions[] = {
+            "jpg", "jpeg", "png", "gif", "bmp",
+            "bin", "dat", "txt", "csv", "json",
+            "zip", "rar", "7z", "tar", "gz"
+        };
+        uploader.setAllowedExtensions(extensions, 15);
         
         // 最大ファイルサイズを設定（100MB）
         uploader.setMaxFileSize(100 * 1024 * 1024);

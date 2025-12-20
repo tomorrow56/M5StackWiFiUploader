@@ -8,6 +8,8 @@
 
 #### 1. HTTPUploadExample
 
+<img src="../img/HTTPUploadExample.jpg" alt="HTTPUploadExample" width="300px">
+
 **ファイル**: `HTTPUploadExample/HTTPUploadExample.ino`
 
 **説明**: 基本的なHTTPアップロードの使用例です。WiFiルーターに接続し、HTTPサーバーを起動してファイルをアップロードします。

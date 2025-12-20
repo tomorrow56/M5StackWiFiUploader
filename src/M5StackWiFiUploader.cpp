@@ -21,7 +21,8 @@ M5StackWiFiUploader::M5StackWiFiUploader(uint16_t port)
     // デフォルト許可拡張子を設定
     _allowedExtensions = {
         "jpg", "jpeg", "png", "gif", "bmp",
-        "bin", "dat", "txt", "csv", "json"
+        "bin", "dat", "txt", "csv", "json",
+        "zip", "rar", "7z", "tar", "gz"
     };
 }
 

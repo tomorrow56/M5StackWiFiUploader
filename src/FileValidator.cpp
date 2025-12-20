@@ -210,6 +210,8 @@ String FileValidator::getMimeType(const char* filename) {
     if (ext == "bin" || ext == "dat") return "application/octet-stream";
     if (ext == "pdf") return "application/pdf";
     if (ext == "zip") return "application/zip";
+    if (ext == "rar") return "application/x-rar-compressed";
+    if (ext == "7z") return "application/x-7z-compressed";
     if (ext == "tar") return "application/x-tar";
     if (ext == "gz") return "application/gzip";
 
