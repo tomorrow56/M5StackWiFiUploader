@@ -26,6 +26,8 @@
 
 #### 2. MultiFileUploadExample
 
+<img src="../img/MultiFileUploadExample.jpg" alt="MultiFileUploadExample" width="300px">
+
 **ファイル**: `MultiFileUploadExample/MultiFileUploadExample.ino`
 
 **説明**: 複数ファイルの同時アップロードに対応したサンプルです。
