@@ -65,6 +65,7 @@ bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
     _webServer->on("/api/files", HTTP_GET, [this]() { _handleListFiles(); });
     _webServer->on("/api/files/list", HTTP_GET, [this]() { _handleFileListDetailed(); });
     _webServer->on("/api/download", HTTP_GET, [this]() { _handleFileDownload(); });
+    _webServer->on("/api/delete", HTTP_DELETE, [this]() { _handleDeleteFile(); });
     _webServer->on("/api/delete", HTTP_POST, [this]() { _handleDeleteFile(); });
     _webServer->on("/api/status", HTTP_GET, [this]() { _handleStatus(); });
     _webServer->on("/api/debug", HTTP_POST, [this]() { _handleDebugLog(); });
@@ -186,12 +187,20 @@ bool M5StackWiFiUploader::fileExists(const char* filename) const {
 
 bool M5StackWiFiUploader::deleteFile(const char* filename) {
     String fullPath = _uploadPath + "/" + filename;
+    Serial.printf("[DEBUG] deleteFile called with: '%s'\n", filename);
+    Serial.printf("[DEBUG] Full path to delete: '%s'\n", fullPath.c_str());
+    Serial.printf("[DEBUG] File exists before delete: %s\n", SD.exists(fullPath.c_str()) ? "true" : "false");
+    
     if (SD.remove(fullPath.c_str())) {
+        Serial.printf("[DEBUG] SD.remove() returned true for: %s\n", fullPath.c_str());
+        Serial.printf("[DEBUG] File exists after delete: %s\n", SD.exists(fullPath.c_str()) ? "true" : "false");
         _log(3, "File deleted: %s", filename);
         return true;
+    } else {
+        Serial.printf("[DEBUG] SD.remove() returned false for: %s\n", fullPath.c_str());
+        _log(2, "Failed to delete file: %s", filename);
+        return false;
     }
-    _log(2, "Failed to delete file: %s", filename);
-    return false;
 }
 
 std::vector<String> M5StackWiFiUploader::listFiles(const char* path) {
@@ -232,8 +241,11 @@ void M5StackWiFiUploader::_handleRoot() {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
+        h1 { color: #333; display: flex; justify-content: space-between; align-items: center; }
         h2 { color: #555; margin-top: 30px; }
+        .language-selector { margin-bottom: 20px; text-align: right; }
+        .language-selector button { background: #607D8B; padding: 8px 16px; margin: 0 2px; }
+        .language-selector button.active { background: #2196F3; }
         .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; margin: 20px 0; border-radius: 4px; cursor: pointer; }
         .upload-area:hover { background: #f9f9f9; }
         .upload-area.dragover { background: #e3f2fd; border-color: #2196F3; }
@@ -315,8 +327,13 @@ void M5StackWiFiUploader::_handleRoot() {
 </head>
 <body>
     <div class="container">
-        <h1>M5Stack WiFi File Uploader</h1>
-        <p>ファイルをドラッグ&ドロップするか、下のボタンをクリックしてアップロードしてください。</p>
+        <div class="language-selector">
+            <button onclick="setLanguage('ja')" id="lang-ja" class="active">日本語</button>
+            <button onclick="setLanguage('en')" id="lang-en">English</button>
+        </div>
+        
+        <h1 id="title">M5Stack WiFi File Uploader</h1>
+        <p id="description">ファイルをドラッグ&ドロップするか、下のボタンをクリックしてアップロードしてください。</p>
         
         <div class="upload-area" id="uploadArea">
             <p>ここにファイルをドラッグ&ドロップ</p>
@@ -328,13 +345,77 @@ void M5StackWiFiUploader::_handleRoot() {
         <div id="uploadProgress"></div>
 
         <div class="file-list">
-            <h2>SDカード内のファイル</h2>
-            <button onclick="loadFilesList()" class="success">更新</button>
+            <h2 id="fileListTitle">SDカード内のファイル</h2>
+            <button onclick="loadFilesList()" class="success" id="refreshBtn">更新</button>
             <div id="filesList" class="loading">読み込み中...</div>
         </div>
     </div>
 
     <script>
+        // 多言語対応
+        const translations = {
+            ja: {
+                title: 'M5Stack WiFi File Uploader',
+                description: 'ファイルをドラッグ&ドロップするか、下のボタンをクリックしてアップロードしてください。',
+                dropText: 'ここにファイルをドラッグ&ドロップ',
+                selectFile: 'ファイルを選択',
+                fileListTitle: 'SDカード内のファイル',
+                refresh: '更新',
+                loading: '読み込み中...',
+                noFiles: 'ファイルがありません',
+                download: 'ダウンロード',
+                delete: '削除',
+                downloading: 'をダウンロード中...',
+                deleting: 'を削除中...',
+                uploadSuccess: 'ファイルが正常にアップロードされました',
+                uploadError: 'ファイルのアップロードに失敗しました',
+                deleteSuccess: 'ファイルが正常に削除されました',
+                deleteError: 'ファイルの削除に失敗しました',
+                listError: 'ファイル一覧の取得に失敗しました'
+            },
+            en: {
+                title: 'M5Stack WiFi File Uploader',
+                description: 'Drag and drop files here or click the button below to upload.',
+                dropText: 'Drag and drop files here',
+                selectFile: 'Select Files',
+                fileListTitle: 'Files on SD Card',
+                refresh: 'Refresh',
+                loading: 'Loading...',
+                noFiles: 'No files',
+                download: 'Download',
+                delete: 'Delete',
+                downloading: ' downloading...',
+                deleting: ' deleting...',
+                uploadSuccess: 'File uploaded successfully',
+                uploadError: 'Failed to upload file',
+                deleteSuccess: 'File deleted successfully',
+                deleteError: 'Failed to delete file',
+                listError: 'Failed to get file list'
+            }
+        };
+
+        let currentLang = 'ja';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            
+            // 言語ボタンの状態を更新
+            document.getElementById('lang-ja').classList.toggle('active', lang === 'ja');
+            document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+            
+            // テキストを更新
+            const t = translations[lang];
+            document.getElementById('title').textContent = t.title;
+            document.getElementById('description').textContent = t.description;
+            document.querySelector('#uploadArea p').textContent = t.dropText;
+            document.querySelector('#uploadArea button').textContent = t.selectFile;
+            document.getElementById('fileListTitle').textContent = t.fileListTitle;
+            document.getElementById('refreshBtn').textContent = t.refresh;
+            
+            // ファイル一覧を再読み込み
+            loadFilesList();
+        }
+
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const statusDiv = document.getElementById('status');
@@ -393,16 +474,19 @@ void M5StackWiFiUploader::_handleRoot() {
             xhr.addEventListener('load', () => {
                 if (xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
-                    showStatus('success', `${file.name} アップロード完了`);
+                    const t = translations[currentLang];
+                    showStatus('success', `${file.name} ${t.uploadSuccess}`);
                     document.getElementById(progressId).remove();
                     loadFilesList();
                 } else {
-                    showStatus('error', `${file.name} アップロード失敗: ${xhr.status}`);
+                    const t = translations[currentLang];
+                    showStatus('error', `${file.name} ${t.uploadError}: ${xhr.status}`);
                 }
             });
 
             xhr.addEventListener('error', () => {
-                showStatus('error', `${file.name} アップロードエラー`);
+                const t = translations[currentLang];
+                showStatus('error', `${file.name} ${t.uploadError}`);
             });
 
             xhr.open('POST', '/api/upload');
@@ -410,7 +494,8 @@ void M5StackWiFiUploader::_handleRoot() {
         }
 
         function loadFilesList() {
-            filesListDiv.innerHTML = '<div class="loading">読み込み中...</div>';
+            const t = translations[currentLang];
+            filesListDiv.innerHTML = `<div class="loading">${t.loading}</div>`;
             
             fetch('/api/files/list')
                 .then(response => response.json())
@@ -422,10 +507,10 @@ void M5StackWiFiUploader::_handleRoot() {
                         table.innerHTML = `
                             <thead>
                                 <tr>
-                                    <th>ファイル名</th>
-                                    <th>サイズ</th>
-                                    <th>更新日時</th>
-                                    <th>操作</th>
+                                    <th>${currentLang === 'ja' ? 'ファイル名' : 'Filename'}</th>
+                                    <th>${currentLang === 'ja' ? 'サイズ' : 'Size'}</th>
+                                    <th>${currentLang === 'ja' ? '更新日時' : 'Modified'}</th>
+                                    <th>${currentLang === 'ja' ? '操作' : 'Actions'}</th>
                                 </tr>
                             </thead>
                             <tbody id="filesTableBody"></tbody>
@@ -440,42 +525,59 @@ void M5StackWiFiUploader::_handleRoot() {
                                 <td class="file-size">${formatFileSize(file.size)}</td>
                                 <td class="file-date">${formatDate(file.modified)}</td>
                                 <td class="actions">
-                                    <button onclick="downloadFile('${file.name}')" class="success">ダウンロード</button>
-                                    <button onclick="deleteFile('${file.name}')" class="danger">削除</button>
+                                    <button onclick="downloadFile('${file.name}')" class="success">${t.download}</button>
+                                    <button onclick="deleteFile('${file.name}')" class="danger">${t.delete}</button>
                                 </td>
                             `;
                             tbody.appendChild(row);
                         });
                     } else {
-                        filesListDiv.innerHTML = '<div class="no-files">ファイルがありません</div>';
+                        filesListDiv.innerHTML = `<div class="no-files">${t.noFiles}</div>`;
                     }
                 })
                 .catch(error => {
-                    filesListDiv.innerHTML = '<div class="no-files">ファイル一覧の取得に失敗しました</div>';
-                    showStatus('error', 'ファイル一覧の取得に失敗しました');
+                    const t = translations[currentLang];
+                    filesListDiv.innerHTML = `<div class="no-files">${t.listError}</div>`;
+                    showStatus('error', t.listError);
                 });
         }
 
         function downloadFile(filename) {
+            const t = translations[currentLang];
             window.location.href = `/api/download?filename=${encodeURIComponent(filename)}`;
-            showStatus('info', `${filename} をダウンロード中...`);
+            showStatus('info', `${filename}${t.downloading}`);
         }
 
         function deleteFile(filename) {
-            if (confirm(`${filename} を削除しますか？`)) {
-                fetch('/api/delete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ filename: filename })
+            const t = translations[currentLang];
+            console.log(`[DEBUG] deleteFile called with: ${filename}`);
+            
+            if (confirm(`${currentLang === 'ja' ? '本当に' : 'Are you sure you want to'} ${filename} ${t.deleting}`)) {
+                const url = `/api/delete?filename=${encodeURIComponent(filename)}`;
+                console.log(`[DEBUG] Sending DELETE request to: ${url}`);
+                
+                fetch(url, { 
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log(`[DEBUG] Response status: ${response.status}`);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log(`[DEBUG] Response data:`, data);
                     if (data.success) {
-                        showStatus('success', `${filename} を削除しました`);
+                        showStatus('success', `${filename} ${t.deleteSuccess}`);
                         loadFilesList();
                     } else {
-                        showStatus('error', `削除に失敗しました: ${data.message}`);
+                        showStatus('error', `${filename} ${t.deleteError}`);
                     }
+                })
+                .catch(error => {
+                    console.error(`[DEBUG] Fetch error:`, error);
+                    showStatus('error', `${filename} ${t.deleteError}`);
                 });
             }
         }
@@ -639,26 +741,61 @@ void M5StackWiFiUploader::_handleListFiles() {
 }
 
 void M5StackWiFiUploader::_handleDeleteFile() {
-    if (_webServer->method() != HTTP_POST) {
+    Serial.println("[DEBUG] _handleDeleteFile called");
+    Serial.printf("[DEBUG] HTTP method: %d\n", _webServer->method());
+    
+    if (_webServer->method() != HTTP_DELETE && _webServer->method() != HTTP_POST) {
+        Serial.println("[DEBUG] Method not allowed");
         _sendJSONResponse(false, "Method not allowed");
         return;
     }
 
-    String body = _webServer->arg("plain");
-    // 簡易的なJSON解析（ArduinoJsonを使わない）
-    int filenamePos = body.indexOf("\"filename\"");
-    if (filenamePos == -1) {
+    String filename;
+    
+    // DELETEメソッドの場合はクエリパラメータから取得
+    if (_webServer->method() == HTTP_DELETE) {
+        filename = _webServer->arg("filename");
+        Serial.printf("[DEBUG] DELETE method, filename from query: '%s'\n", filename.c_str());
+    } else {
+        // POSTメソッドの場合はJSONボディから取得
+        String body = _webServer->arg("plain");
+        Serial.printf("[DEBUG] POST method, body: '%s'\n", body.c_str());
+        
+        int filenamePos = body.indexOf("\"filename\"");
+        if (filenamePos == -1) {
+            Serial.println("[DEBUG] No filename in JSON body");
+            _sendJSONResponse(false, "No filename provided");
+            return;
+        }
+        
+        int startPos = body.indexOf("\"", filenamePos + 11) + 1;
+        int endPos = body.indexOf("\"", startPos);
+        filename = body.substring(startPos, endPos);
+        Serial.printf("[DEBUG] Extracted filename: '%s'\n", filename.c_str());
+    }
+
+    if (filename.length() == 0) {
+        Serial.println("[DEBUG] Empty filename");
         _sendJSONResponse(false, "No filename provided");
         return;
     }
 
-    int startPos = body.indexOf("\"", filenamePos + 11) + 1;
-    int endPos = body.indexOf("\"", startPos);
-    String filename = body.substring(startPos, endPos);
+    // ファイル名を検証
+    if (!_isValidFilename(filename.c_str())) {
+        Serial.printf("[DEBUG] Invalid filename: '%s'\n", filename.c_str());
+        _sendJSONResponse(false, "Invalid filename");
+        return;
+    }
+
+    String fullPath = _uploadPath + "/" + filename;
+    Serial.printf("[DEBUG] Full path: '%s'\n", fullPath.c_str());
+    Serial.printf("[DEBUG] File exists: %s\n", SD.exists(fullPath.c_str()) ? "true" : "false");
 
     if (deleteFile(filename.c_str())) {
+        Serial.printf("[DEBUG] File deleted successfully: %s\n", filename.c_str());
         _sendJSONResponse(true, "File deleted successfully", filename.c_str());
     } else {
+        Serial.printf("[DEBUG] Failed to delete file: %s\n", filename.c_str());
         _sendJSONResponse(false, "Failed to delete file");
     }
 }
