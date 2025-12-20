@@ -552,7 +552,7 @@ void M5StackWiFiUploader::_handleRoot() {
             const t = translations[currentLang];
             console.log(`[DEBUG] deleteFile called with: ${filename}`);
             
-            if (confirm(`${currentLang === 'ja' ? '本当に' : 'Are you sure you want to'} ${filename} ${t.deleting}`)) {
+if (confirm(currentLang === 'ja' ? `${filename} を削除しますか？` : `Delete ${filename}?`)) {
                 const url = `/api/delete?filename=${encodeURIComponent(filename)}`;
                 console.log(`[DEBUG] Sending DELETE request to: ${url}`);
                 
