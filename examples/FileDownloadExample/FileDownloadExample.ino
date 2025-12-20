@@ -265,7 +265,7 @@ void displayFileCount() {
     uint32_t totalSize = 0;
     for (const auto& file : files) {
         String fullPath = "/uploads/" + file;
-        totalSize += uploader.getFileSize(fullPath.c_str());
+        totalSize += SDCardManager::getFileSize(fullPath.c_str());
     }
     
     M5.Display.setCursor(15, 165);

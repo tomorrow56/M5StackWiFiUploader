@@ -175,7 +175,7 @@ void configureUploader() {
     });
     
     uploader.onUploadProgress([](const char* filename, uint32_t uploaded, uint32_t total) {
-        uint8_t progress = (uploaded * 100) / total;
+        uint8_t progress = (total > 0) ? (uploaded * 100) / total : 0;
         Serial.printf("[PROGRESS] %s: %d%%\n", filename, progress);
         displayUploadStatus(filename, uploaded, total);
     });
@@ -273,7 +273,7 @@ void displayUploadStatus(const char* filename, uint32_t uploaded, uint32_t total
     M5.Display.printf("Uploading: %s", filename);
     
     // プログレスバー
-    uint8_t progress = (uploaded * 100) / total;
+    uint8_t progress = (total > 0) ? (uploaded * 100) / total : 0;
     M5.Display.setCursor(10, 150);
     M5.Display.printf("Progress: %d%%", progress);
     
