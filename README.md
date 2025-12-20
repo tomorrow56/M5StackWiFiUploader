@@ -1,6 +1,6 @@
 # M5Stack WiFi File Uploader
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/tomorrow56/M5StackWiFiUploader)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/tomorrow56/M5StackWiFiUploader)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)](https://www.espressif.com/en/products/socs/esp32)
 
@@ -16,6 +16,7 @@
 - **堅牢なエラーハンドリング**: 14種類のエラーコードと自動再試行機能（指数バックオフ対応）。
 - **詳細なプログレス表示**: 転送速度、残り時間、全体進捗などをリアルタイムで追跡。
 - **モダンなWeb UI**: ドラッグ＆ドロップ対応のレスポンシブなWebインターフェース。
+- **モバイル最適化**: Android/iOSでも完全に動作する最適化されたUI。
 - **柔軟な設定**: ファイルサイズ、拡張子、同時アップロード数などを自由に設定可能。
 - **豊富なコールバック**: アップロードの各段階（開始、進捗、完了、エラー）でカスタム処理を実行可能。
 - **操作の制御**: アップロードの一時停止、再開、キャンセルが可能。
@@ -31,7 +32,8 @@
 
 ## 📚 依存ライブラリ
 
-- `WiFi`, `WebServer`, `FS`, `SD` (ESP32コアに内蔵)
+- **M5Unified** 0.2.11以降
+- `WiFi`, `WebServer`, `FS`, `SD` (ESP32 Arduino Core 3.xに内蔵)
 - `WebSocketsServer` (本ライブラリに同梱)
 - `ArduinoJson` (本ライブラリに同梱)
 
@@ -46,9 +48,10 @@
 基本的な使い方は `examples/FullFeaturedDemo/FullFeaturedDemo.ino` を参照してください。
 
 ```cpp
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include "M5StackWiFiUploader.h"
+#include "SDCardManager.h"
 
 const char* WIFI_SSID = "your_ssid";
 const char* WIFI_PASSWORD = "your_password";
@@ -56,15 +59,32 @@ const char* WIFI_PASSWORD = "your_password";
 M5StackWiFiUploader uploader;
 
 void setup() {
-    M5.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
+    Serial.begin(115200);
+    
+    // SDカード初期化
+    if (!SDCardManager::initialize()) {
+        Serial.println("SD Card initialization failed!");
+        return;
+    }
+    
+    // WiFi接続
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) { delay(500); }
+    while (WiFi.status() != WL_CONNECTED) { 
+        delay(500); 
+        Serial.print(".");
+    }
+    Serial.println("\nWiFi Connected!");
 
     // WebSocketを有効化
     uploader.enableWebSocket(true);
 
     // アップローダーを開始
-    uploader.begin();
+    if (uploader.begin(80, "/uploads")) {
+        Serial.println("Server started successfully!");
+        Serial.printf("Server URL: http://%s\n", WiFi.localIP().toString().c_str());
+    }
 
     // コールバック設定
     uploader.onUploadComplete([](const char* filename, uint32_t size, bool success) {
@@ -75,6 +95,7 @@ void setup() {
 }
 
 void loop() {
+    M5.update();
     uploader.handleClient();
 }
 ```

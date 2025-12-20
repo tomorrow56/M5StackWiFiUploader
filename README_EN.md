@@ -1,6 +1,6 @@
 # M5Stack WiFi File Uploader
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/tomorrow56/M5StackWiFiUploader)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/tomorrow56/M5StackWiFiUploader)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)](https://www.espressif.com/en/products/socs/esp32)
 
@@ -16,6 +16,7 @@ This library starts an HTTP/WebSocket server on your M5Stack device, allowing yo
 - **Robust Error Handling**: Features 14 error codes and an automatic retry mechanism with exponential backoff.
 - **Detailed Progress Tracking**: Real-time tracking of transfer speed, remaining time, and overall progress.
 - **Modern Web UI**: A responsive, drag-and-drop web interface.
+- **Mobile Optimized**: Fully functional UI optimized for Android/iOS devices.
 - **Flexible Configuration**: Freely configure file size limits, allowed extensions, concurrent uploads, and more.
 - **Rich Callbacks**: Execute custom logic at each stage of the upload process (start, progress, completion, error).
 - **Operation Control**: Pause, resume, and cancel uploads.
@@ -29,7 +30,8 @@ This library starts an HTTP/WebSocket server on your M5Stack device, allowing yo
 
 ## 📚 Dependencies
 
-- `WiFi`, `WebServer`, `FS`, `SD` (Built into the ESP32 core)
+- **M5Unified** 0.2.11 or later
+- `WiFi`, `WebServer`, `FS`, `SD` (Built into ESP32 Arduino Core 3.x)
 - `WebSocketsServer` (Included with this library)
 - `ArduinoJson` (Included with this library)
 
@@ -44,9 +46,10 @@ This library starts an HTTP/WebSocket server on your M5Stack device, allowing yo
 Refer to `examples/FullFeaturedDemo/FullFeaturedDemo.ino` for a basic example.
 
 ```cpp
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include "M5StackWiFiUploader.h"
+#include "SDCardManager.h"
 
 const char* WIFI_SSID = "your_ssid";
 const char* WIFI_PASSWORD = "your_password";
@@ -54,17 +57,34 @@ const char* WIFI_PASSWORD = "your_password";
 M5StackWiFiUploader uploader;
 
 void setup() {
-    M5.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
+    Serial.begin(115200);
+    
+    // Initialize SD card
+    if (!SDCardManager::initialize()) {
+        Serial.println("SD Card initialization failed!");
+        return;
+    }
+    
+    // Connect to WiFi
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) { delay(500); }
+    while (WiFi.status() != WL_CONNECTED) { 
+        delay(500); 
+        Serial.print(".");
+    }
+    Serial.println("\nWiFi Connected!");
 
     // Enable WebSocket
     uploader.enableWebSocket(true);
 
     // Start the uploader
-    uploader.begin();
+    if (uploader.begin(80, "/uploads")) {
+        Serial.println("Server started successfully!");
+        Serial.printf("Server URL: http://%s\n", WiFi.localIP().toString().c_str());
+    }
 
-    // Set up a callback
+    // Set up callbacks
     uploader.onUploadComplete([](const char* filename, uint32_t size, bool success) {
         if (success) {
             Serial.printf("Upload complete: %s\n", filename);
@@ -73,6 +93,7 @@ void setup() {
 }
 
 void loop() {
+    M5.update();
     uploader.handleClient();
 }
 ```
