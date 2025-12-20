@@ -1,6 +1,7 @@
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include "M5StackWiFiUploader.h"
+#include "SDCardManager.h"
 
 // WiFi設定
 const char* WIFI_SSID = "your_ssid";
@@ -10,9 +11,19 @@ const char* WIFI_PASSWORD = "your_password";
 M5StackWiFiUploader uploader;
 
 void setup() {
-    M5.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
     Serial.begin(115200);
     delay(100);
+    
+    // SDカード初期化
+    Serial.println("Initializing SD Card...");
+    if (!SDCardManager::initialize()) {
+        Serial.println("ERROR: SD Card initialization failed!");
+        delay(2000);
+    } else {
+        Serial.println("SD Card initialized successfully!");
+    }
     
     // WiFiに接続
     Serial.println("Connecting to WiFi...");
@@ -43,7 +54,8 @@ void setup() {
     });
 
     uploader.onUploadProgress([](const char* filename, uint32_t uploaded, uint32_t total) {
-        uint8_t progress = (uploaded * 100) / total;
+        // 0除算防止
+        uint8_t progress = (total > 0) ? (uploaded * 100) / total : 0;
         Serial.printf("Progress: %d%%\n", progress);
     });
 

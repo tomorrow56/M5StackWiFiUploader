@@ -25,6 +25,7 @@ dist/
 *.swo
 *~
 .DS_Store
+._*
 
 # Dependencies
 node_modules/

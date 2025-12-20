@@ -18,9 +18,10 @@
  * 対応モデル: M5Stack Core, Core2, CoreS3
  */
 
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include "M5StackWiFiUploader.h"
+#include "SDCardManager.h"
 
 // ========================================================================
 // WiFi設定
@@ -46,16 +47,28 @@ const unsigned long DISPLAY_UPDATE_INTERVAL = 2000;
 // セットアップ
 // ========================================================================
 void setup() {
-    M5.begin();
-    M5.Power.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
     Serial.begin(115200);
     
     // 画面初期化
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextColor(WHITE);
+    M5.Display.fillScreen(BLACK);
+    M5.Display.setTextSize(2);
+    M5.Display.setTextColor(WHITE);
     
     displayHeader();
+    displayMessage("Initializing SD Card...", TFT_CYAN);
+    
+    // SDカード初期化
+    if (!SDCardManager::initialize()) {
+        displayMessage("ERROR: SD Card failed", TFT_RED);
+        Serial.println("SD Card initialization failed!");
+        delay(2000);
+    } else {
+        displayMessage("SD Card Ready!", TFT_GREEN);
+        Serial.println("SD Card initialized successfully!");
+    }
+    
     displayMessage("Connecting to WiFi...", TFT_CYAN);
     
     // WiFi接続
@@ -173,7 +186,7 @@ void handleButtons() {
     
     if (M5.BtnC.wasPressed()) {
         // ボタンC: 画面クリア
-        M5.Lcd.fillScreen(BLACK);
+        M5.Display.fillScreen(BLACK);
         displayHeader();
         displayServerInfo();
         displayButtons();
@@ -185,69 +198,69 @@ void handleButtons() {
 // 画面表示関数
 // ========================================================================
 void displayHeader() {
-    M5.Lcd.fillRect(0, 0, 320, 30, TFT_NAVY);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setCursor(10, 8);
-    M5.Lcd.print("File Download Demo");
+    M5.Display.fillRect(0, 0, 320, 30, TFT_NAVY);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, 8);
+    M5.Display.print("File Download Demo");
 }
 
 void displayMessage(String msg, uint16_t color) {
-    M5.Lcd.fillRect(0, 35, 320, 25, BLACK);
-    M5.Lcd.setTextColor(color);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setCursor(10, 38);
-    M5.Lcd.print(msg);
+    M5.Display.fillRect(0, 35, 320, 25, BLACK);
+    M5.Display.setTextColor(color);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, 38);
+    M5.Display.print(msg);
 }
 
 void displayServerInfo() {
-    M5.Lcd.setTextColor(TFT_CYAN);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 70);
-    M5.Lcd.printf("SSID: %s", WIFI_SSID);
-    M5.Lcd.setCursor(10, 85);
-    M5.Lcd.printf("IP: %s", WiFi.localIP().toString().c_str());
-    M5.Lcd.setCursor(10, 100);
-    M5.Lcd.printf("URL: http://%s", WiFi.localIP().toString().c_str());
+    M5.Display.setTextColor(TFT_CYAN);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 70);
+    M5.Display.printf("SSID: %s", WIFI_SSID);
+    M5.Display.setCursor(10, 85);
+    M5.Display.printf("IP: %s", WiFi.localIP().toString().c_str());
+    M5.Display.setCursor(10, 100);
+    M5.Display.printf("URL: http://%s", WiFi.localIP().toString().c_str());
 }
 
 void displayInstructions() {
-    M5.Lcd.setTextColor(TFT_YELLOW);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 125);
-    M5.Lcd.println("Features:");
-    M5.Lcd.setCursor(10, 140);
-    M5.Lcd.println("- View file list");
-    M5.Lcd.setCursor(10, 155);
-    M5.Lcd.println("- Download files");
-    M5.Lcd.setCursor(10, 170);
-    M5.Lcd.println("- Delete files");
-    M5.Lcd.setCursor(10, 185);
-    M5.Lcd.println("- Upload new files");
+    M5.Display.setTextColor(TFT_YELLOW);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 125);
+    M5.Display.println("Features:");
+    M5.Display.setCursor(10, 140);
+    M5.Display.println("- View file list");
+    M5.Display.setCursor(10, 155);
+    M5.Display.println("- Download files");
+    M5.Display.setCursor(10, 170);
+    M5.Display.println("- Delete files");
+    M5.Display.setCursor(10, 185);
+    M5.Display.println("- Upload new files");
 }
 
 void displayButtons() {
-    M5.Lcd.fillRect(0, 210, 320, 30, TFT_DARKGREY);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 218);
-    M5.Lcd.print("Files");
-    M5.Lcd.setCursor(130, 218);
-    M5.Lcd.print("Stats");
-    M5.Lcd.setCursor(250, 218);
-    M5.Lcd.print("Clear");
+    M5.Display.fillRect(0, 210, 320, 30, TFT_DARKGREY);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 218);
+    M5.Display.print("Files");
+    M5.Display.setCursor(130, 218);
+    M5.Display.print("Stats");
+    M5.Display.setCursor(250, 218);
+    M5.Display.print("Clear");
 }
 
 void displayFileCount() {
-    M5.Lcd.fillRect(0, 125, 320, 85, BLACK);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 130);
-    M5.Lcd.println("SD Card Information:");
+    M5.Display.fillRect(0, 125, 320, 85, BLACK);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 130);
+    M5.Display.println("SD Card Information:");
     
     auto files = uploader.listFiles();
-    M5.Lcd.setCursor(15, 150);
-    M5.Lcd.printf("Total files: %d", files.size());
+    M5.Display.setCursor(15, 150);
+    M5.Display.printf("Total files: %d", files.size());
     
     uint32_t totalSize = 0;
     for (const auto& file : files) {
@@ -255,39 +268,39 @@ void displayFileCount() {
         totalSize += uploader.getFileSize(fullPath.c_str());
     }
     
-    M5.Lcd.setCursor(15, 165);
-    M5.Lcd.printf("Total size: %d KB", totalSize / 1024);
+    M5.Display.setCursor(15, 165);
+    M5.Display.printf("Total size: %d KB", totalSize / 1024);
     
-    M5.Lcd.setCursor(15, 180);
-    M5.Lcd.printf("Free space: %d MB", uploader.getSDFreeSpace() / 1024 / 1024);
+    M5.Display.setCursor(15, 180);
+    M5.Display.printf("Free space: %d MB", uploader.getSDFreeSpace() / 1024 / 1024);
 }
 
 void displayDownloadStats() {
-    M5.Lcd.fillRect(0, 125, 320, 85, BLACK);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 130);
-    M5.Lcd.println("Download Statistics:");
+    M5.Display.fillRect(0, 125, 320, 85, BLACK);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 130);
+    M5.Display.println("Download Statistics:");
     
-    M5.Lcd.setCursor(15, 150);
-    M5.Lcd.printf("Downloads: %d", downloadCount);
+    M5.Display.setCursor(15, 150);
+    M5.Display.printf("Downloads: %d", downloadCount);
     
-    M5.Lcd.setCursor(15, 165);
-    M5.Lcd.printf("Total: %d KB", totalDownloaded / 1024);
+    M5.Display.setCursor(15, 165);
+    M5.Display.printf("Total: %d KB", totalDownloaded / 1024);
     
     if (lastDownloadedFile.length() > 0) {
-        M5.Lcd.setCursor(15, 180);
-        M5.Lcd.printf("Last: %s", lastDownloadedFile.c_str());
+        M5.Display.setCursor(15, 180);
+        M5.Display.printf("Last: %s", lastDownloadedFile.c_str());
     }
 }
 
 void updateDisplay() {
     // ステータスバー更新
-    M5.Lcd.fillRect(0, 30, 320, 10, BLACK);
-    M5.Lcd.setTextColor(TFT_YELLOW);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 30);
-    M5.Lcd.printf("Active: %d | Files: %d", 
+    M5.Display.fillRect(0, 30, 320, 10, BLACK);
+    M5.Display.setTextColor(TFT_YELLOW);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 30);
+    M5.Display.printf("Active: %d | Files: %d", 
                  uploader.getActiveUploads(),
                  uploader.listFiles().size());
 }

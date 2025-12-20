@@ -4,13 +4,14 @@
  * このスケッチは ErrorHandler クラスの機能をテストします。
  */
 
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include "ErrorHandler.h"
 
 ErrorHandler errorHandler;
 
 void setup() {
-    M5.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
     Serial.begin(115200);
     delay(1000);
     

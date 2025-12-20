@@ -14,9 +14,10 @@
  * 対応モデル: M5Stack Core, Core2, CoreS3
  */
 
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include "M5StackWiFiUploader.h"
+#include "SDCardManager.h"
 
 // ========================================================================
 // APモード設定
@@ -45,16 +46,28 @@ const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;
 // セットアップ
 // ========================================================================
 void setup() {
-    M5.begin();
-    M5.Power.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
     Serial.begin(115200);
     
     // 画面初期化
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextColor(WHITE);
+    M5.Display.fillScreen(BLACK);
+    M5.Display.setTextSize(2);
+    M5.Display.setTextColor(WHITE);
     
     displayHeader();
+    displayMessage("Initializing SD Card...", TFT_CYAN);
+    
+    // SDカード初期化
+    if (!SDCardManager::initialize()) {
+        displayMessage("ERROR: SD Card failed", TFT_RED);
+        Serial.println("SD Card initialization failed!");
+        delay(2000);
+    } else {
+        displayMessage("SD Card Ready!", TFT_GREEN);
+        Serial.println("SD Card initialized successfully!");
+    }
+    
     displayMessage("Starting AP Mode...", TFT_CYAN);
     
     // APモード開始
@@ -188,7 +201,7 @@ void handleButtons() {
     
     if (M5.BtnC.wasPressed()) {
         // ボタンC: 画面クリア
-        M5.Lcd.fillScreen(BLACK);
+        M5.Display.fillScreen(BLACK);
         displayHeader();
         displayAPInfo();
         displayButtons();
@@ -200,115 +213,115 @@ void handleButtons() {
 // 画面表示関数
 // ========================================================================
 void displayHeader() {
-    M5.Lcd.fillRect(0, 0, 320, 30, TFT_NAVY);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setCursor(10, 8);
-    M5.Lcd.print("WiFi AP Mode");
+    M5.Display.fillRect(0, 0, 320, 30, TFT_NAVY);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, 8);
+    M5.Display.print("WiFi AP Mode");
 }
 
 void displayMessage(String msg, uint16_t color) {
-    M5.Lcd.fillRect(0, 35, 320, 25, BLACK);
-    M5.Lcd.setTextColor(color);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setCursor(10, 38);
-    M5.Lcd.print(msg);
+    M5.Display.fillRect(0, 35, 320, 25, BLACK);
+    M5.Display.setTextColor(color);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(10, 38);
+    M5.Display.print(msg);
 }
 
 void displayAPInfo() {
-    M5.Lcd.setTextColor(TFT_CYAN);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 70);
-    M5.Lcd.printf("SSID: %s", AP_SSID);
-    M5.Lcd.setCursor(10, 85);
-    M5.Lcd.printf("Password: %s", AP_PASSWORD);
-    M5.Lcd.setCursor(10, 100);
-    M5.Lcd.printf("IP: %s", WiFi.softAPIP().toString().c_str());
-    M5.Lcd.setCursor(10, 115);
-    M5.Lcd.printf("URL: http://%s", WiFi.softAPIP().toString().c_str());
+    M5.Display.setTextColor(TFT_CYAN);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 70);
+    M5.Display.printf("SSID: %s", AP_SSID);
+    M5.Display.setCursor(10, 85);
+    M5.Display.printf("Password: %s", AP_PASSWORD);
+    M5.Display.setCursor(10, 100);
+    M5.Display.printf("IP: %s", WiFi.softAPIP().toString().c_str());
+    M5.Display.setCursor(10, 115);
+    M5.Display.printf("URL: http://%s", WiFi.softAPIP().toString().c_str());
 }
 
 void displayInstructions() {
-    M5.Lcd.setTextColor(TFT_YELLOW);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 140);
-    M5.Lcd.println("How to use:");
-    M5.Lcd.setCursor(10, 155);
-    M5.Lcd.println("1. Connect to WiFi AP");
-    M5.Lcd.setCursor(10, 170);
-    M5.Lcd.println("2. Open browser");
-    M5.Lcd.setCursor(10, 185);
-    M5.Lcd.println("3. Go to http://192.168.4.1");
+    M5.Display.setTextColor(TFT_YELLOW);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 140);
+    M5.Display.println("How to use:");
+    M5.Display.setCursor(10, 155);
+    M5.Display.println("1. Connect to WiFi AP");
+    M5.Display.setCursor(10, 170);
+    M5.Display.println("2. Open browser");
+    M5.Display.setCursor(10, 185);
+    M5.Display.println("3. Go to http://192.168.4.1");
 }
 
 void displayButtons() {
-    M5.Lcd.fillRect(0, 210, 320, 30, TFT_DARKGREY);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 218);
-    M5.Lcd.print("Clients");
-    M5.Lcd.setCursor(130, 218);
-    M5.Lcd.print("Files");
-    M5.Lcd.setCursor(250, 218);
-    M5.Lcd.print("Clear");
+    M5.Display.fillRect(0, 210, 320, 30, TFT_DARKGREY);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 218);
+    M5.Display.print("Clients");
+    M5.Display.setCursor(130, 218);
+    M5.Display.print("Files");
+    M5.Display.setCursor(250, 218);
+    M5.Display.print("Clear");
 }
 
 void displayUploadStatus(const char* filename, uint32_t uploaded, uint32_t total) {
-    M5.Lcd.fillRect(0, 140, 320, 70, BLACK);
-    M5.Lcd.setTextColor(TFT_CYAN);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 145);
-    M5.Lcd.printf("Uploading: %s", filename);
+    M5.Display.fillRect(0, 140, 320, 70, BLACK);
+    M5.Display.setTextColor(TFT_CYAN);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 145);
+    M5.Display.printf("Uploading: %s", filename);
     
-    // プログレスバー
-    uint8_t progress = (uploaded * 100) / total;
-    M5.Lcd.setCursor(10, 160);
-    M5.Lcd.printf("Progress: %d%%", progress);
+    // プログレスバー（0除算防止）
+    uint8_t progress = (total > 0) ? (uploaded * 100) / total : 0;
+    M5.Display.setCursor(10, 160);
+    M5.Display.printf("Progress: %d%%", progress);
     
     int barWidth = (progress * 280) / 100;
-    M5.Lcd.fillRect(20, 175, 280, 15, TFT_DARKGREY);
-    M5.Lcd.fillRect(20, 175, barWidth, 15, TFT_GREEN);
+    M5.Display.fillRect(20, 175, 280, 15, TFT_DARKGREY);
+    M5.Display.fillRect(20, 175, barWidth, 15, TFT_GREEN);
     
-    M5.Lcd.setCursor(10, 195);
-    M5.Lcd.printf("%d / %d bytes", uploaded, total);
+    M5.Display.setCursor(10, 195);
+    M5.Display.printf("%d / %d bytes", uploaded, total);
 }
 
 void displayClientInfo() {
-    M5.Lcd.fillRect(0, 140, 320, 70, BLACK);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 145);
-    M5.Lcd.println("Client Information:");
+    M5.Display.fillRect(0, 140, 320, 70, BLACK);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 145);
+    M5.Display.println("Client Information:");
     
     connectedClients = WiFi.softAPgetStationNum();
-    M5.Lcd.setCursor(15, 165);
-    M5.Lcd.printf("Connected: %d", connectedClients);
+    M5.Display.setCursor(15, 165);
+    M5.Display.printf("Connected: %d", connectedClients);
     
-    M5.Lcd.setCursor(15, 180);
-    M5.Lcd.printf("Total uploaded: %d KB", totalUploaded / 1024);
+    M5.Display.setCursor(15, 180);
+    M5.Display.printf("Total uploaded: %d KB", totalUploaded / 1024);
 }
 
 void displayFileList() {
-    M5.Lcd.fillRect(0, 140, 320, 70, BLACK);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 145);
-    M5.Lcd.println("Files on SD Card:");
+    M5.Display.fillRect(0, 140, 320, 70, BLACK);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 145);
+    M5.Display.println("Files on SD Card:");
     
     auto files = uploader.listFiles();
     int y = 165;
     for (int i = 0; i < min((int)files.size(), 3); i++) {
-        M5.Lcd.setCursor(15, y);
-        M5.Lcd.printf("%d. %s", i + 1, files[i].c_str());
+        M5.Display.setCursor(15, y);
+        M5.Display.printf("%d. %s", i + 1, files[i].c_str());
         y += 15;
     }
     
     if (files.size() == 0) {
-        M5.Lcd.setCursor(15, 165);
-        M5.Lcd.print("No files");
+        M5.Display.setCursor(15, 165);
+        M5.Display.print("No files");
     } else if (files.size() > 3) {
-        M5.Lcd.setCursor(15, y);
-        M5.Lcd.printf("...and %d more", files.size() - 3);
+        M5.Display.setCursor(15, y);
+        M5.Display.printf("...and %d more", files.size() - 3);
     }
 }
 
@@ -316,11 +329,11 @@ void updateDisplay() {
     // ステータスバー更新
     connectedClients = WiFi.softAPgetStationNum();
     
-    M5.Lcd.fillRect(0, 30, 320, 10, BLACK);
-    M5.Lcd.setTextColor(TFT_YELLOW);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 30);
-    M5.Lcd.printf("Clients: %d | Uploaded: %d KB", 
+    M5.Display.fillRect(0, 30, 320, 10, BLACK);
+    M5.Display.setTextColor(TFT_YELLOW);
+    M5.Display.setTextSize(1);
+    M5.Display.setCursor(10, 30);
+    M5.Display.printf("Clients: %d | Uploaded: %d KB", 
                  connectedClients,
                  totalUploaded / 1024);
 }

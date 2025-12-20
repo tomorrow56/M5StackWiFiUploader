@@ -57,12 +57,16 @@ bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
 
     // ルートハンドラーを登録
     _webServer->on("/", HTTP_GET, [this]() { _handleRoot(); });
-    _webServer->on("/api/upload", HTTP_POST, [this]() { _handleUploadHTTP(); });
+    _webServer->on("/api/upload", HTTP_POST, 
+        [this]() { _handleUploadHTTP(); },
+        [this]() { _handleUploadData(); }
+    );
     _webServer->on("/api/files", HTTP_GET, [this]() { _handleListFiles(); });
     _webServer->on("/api/files/list", HTTP_GET, [this]() { _handleFileListDetailed(); });
     _webServer->on("/api/download", HTTP_GET, [this]() { _handleFileDownload(); });
     _webServer->on("/api/delete", HTTP_POST, [this]() { _handleDeleteFile(); });
     _webServer->on("/api/status", HTTP_GET, [this]() { _handleStatus(); });
+    _webServer->on("/api/debug", HTTP_POST, [this]() { _handleDebugLog(); });
 
     // アップロードディレクトリを確認・作成
     if (!_ensureUploadDirectory()) {
@@ -217,7 +221,7 @@ std::vector<String> M5StackWiFiUploader::listFiles(const char* path) {
 // ============================================================================
 
 void M5StackWiFiUploader::_handleRoot() {
-    String html = R"(
+    String html = R"RAWHTML(
 <!DOCTYPE html>
 <html>
 <head>
@@ -257,7 +261,56 @@ void M5StackWiFiUploader::_handleRoot() {
         .actions { display: flex; gap: 5px; }
         .no-files { text-align: center; padding: 20px; color: #999; }
         .loading { text-align: center; padding: 20px; }
-    </style>
+        
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            body { margin: 10px; }
+            .container { padding: 15px; }
+            .file-table { 
+                display: block; 
+                overflow-x: auto; 
+                -webkit-overflow-scrolling: touch; 
+                font-size: 12px; 
+            }
+            .file-table th, .file-table td { 
+                padding: 8px 4px; 
+                font-size: 12px; 
+            }
+            .file-name { 
+                word-break: break-all; 
+                max-width: 150px; 
+            }
+            .actions { 
+                flex-direction: column; 
+                gap: 2px; 
+            }
+            button { 
+                padding: 6px 8px; 
+                font-size: 11px; 
+                margin: 1px 0; 
+            }
+            .upload-area { padding: 15px; }
+            h1 { font-size: 24px; }
+            h2 { font-size: 20px; }
+        }
+        
+        @media (max-width: 480px) {
+            .file-table th, .file-table td { 
+                padding: 6px 2px; 
+                font-size: 11px; 
+            }
+            .file-name { 
+                max-width: 120px; 
+            }
+            button { 
+                padding: 4px 6px; 
+                font-size: 10px; 
+            }
+            .container { padding: 10px; }
+            .upload-area { padding: 10px; }
+        }
+        
+            </style>
 </head>
 <body>
     <div class="container">
@@ -457,114 +510,116 @@ void M5StackWiFiUploader::_handleRoot() {
     </script>
 </body>
 </html>
-    )";
+    )RAWHTML";
     
     _webServer->send(200, "text/html; charset=utf-8", html);
 }
 
 void M5StackWiFiUploader::_handleUploadHTTP() {
-    if (_webServer->method() != HTTP_POST) {
-        _webServer->send(405, "application/json", "{\"success\": false, \"message\": \"Method not allowed\"}");
-        return;
-    }
+    // マルチパートアップロードが完了した後に呼ばれる
+    Serial.println("[DEBUG] _handleUploadHTTP called");
+    _sendJSONResponse(true, "File uploaded successfully");
+}
 
-    // マルチパートフォームデータをチェック
-    if (_webServer->args() == 0) {
-        _log(2, "No POST arguments received");
-        _sendJSONResponse(false, "No file data received");
-        return;
-    }
-
-    // ファイルデータを取得
-    for (uint8_t i = 0; i < _webServer->args(); i++) {
-        String argName = _webServer->argName(i);
-        String argValue = _webServer->arg(i);
-
-        if (argName == "file") {
-            // ファイル名を取得（Content-Dispositionヘッダーから）
-            String filename = "";
-            for (uint8_t j = 0; j < _webServer->headers(); j++) {
-                if (_webServer->headerName(j) == "Content-Disposition") {
-                    String disposition = _webServer->header(j);
-                    int filenamePos = disposition.indexOf("filename=\"");
-                    if (filenamePos != -1) {
-                        int endPos = disposition.indexOf("\"", filenamePos + 10);
-                        filename = disposition.substring(filenamePos + 10, endPos);
-                        break;
-                    }
-                }
-            }
-
-            if (filename.length() == 0) {
-                _log(2, "No filename provided");
-                _sendJSONResponse(false, "No filename provided");
-                return;
-            }
-
-            // ファイル名を検証・サニタイズ
-            if (!_isValidFilename(filename.c_str())) {
-                _log(2, "Invalid filename: %s", filename.c_str());
-                _sendJSONResponse(false, "Invalid filename");
-                return;
-            }
-
-            filename = _sanitizeFilename(filename.c_str());
-
-            // 拡張子を検証
-            if (!_isValidExtension(filename.c_str())) {
-                _log(2, "Invalid file extension: %s", filename.c_str());
-                _sendJSONResponse(false, "File extension not allowed");
-                return;
-            }
-
-            // ファイルサイズをチェック
-            uint32_t filesize = argValue.length();
-            if (filesize > _maxFileSize) {
-                _log(2, "File too large: %d bytes (max: %d)", filesize, _maxFileSize);
-                _sendJSONResponse(false, "File too large");
-                return;
-            }
-
-            // 上書き保護をチェック
-            String fullPath = _uploadPath + "/" + filename;
-            if (_overwriteProtection && SD.exists(fullPath.c_str())) {
-                _log(2, "File already exists (overwrite protection): %s", filename.c_str());
-                _sendJSONResponse(false, "File already exists");
-                return;
-            }
-
-            // コールバック: アップロード開始
-            if (_onUploadStart) {
-                _onUploadStart(filename.c_str(), filesize);
-            }
-
-            // ファイルを保存
-            uint8_t* data = (uint8_t*)argValue.c_str();
-            if (_saveFile(filename.c_str(), data, filesize)) {
-                _totalUploaded += filesize;
-                _log(3, "File uploaded successfully: %s (%d bytes)", filename.c_str(), filesize);
-
-                // コールバック: アップロード完了
-                if (_onUploadComplete) {
-                    _onUploadComplete(filename.c_str(), filesize, true);
-                }
-
-                _sendJSONResponse(true, "File uploaded successfully", filename.c_str());
-            } else {
-                _log(1, "Failed to save file: %s", filename.c_str());
-
-                // コールバック: エラー
-                if (_onUploadError) {
-                    _onUploadError(filename.c_str(), ERR_SD_WRITE_FAILED, "Failed to write to SD card");
-                }
-
-                _sendJSONResponse(false, "Failed to save file");
-            }
+void M5StackWiFiUploader::_handleUploadData() {
+    Serial.println("[DEBUG] _handleUploadData called");
+    HTTPUpload& upload = _webServer->upload();
+    static File uploadFile;
+    static String currentFilename;
+    static uint32_t currentFilesize;
+    
+    Serial.printf("[DEBUG] upload.status = %d\n", upload.status);
+    
+    if (upload.status == UPLOAD_FILE_START) {
+        currentFilename = upload.filename;
+        currentFilesize = 0;
+        
+        _log(3, "Upload Start: %s", currentFilename.c_str());
+        
+        // ファイル名を検証
+        if (!_isValidFilename(currentFilename.c_str())) {
+            _log(2, "Invalid filename: %s", currentFilename.c_str());
             return;
         }
+        
+        currentFilename = _sanitizeFilename(currentFilename.c_str());
+        
+        // 拡張子を検証
+        if (!_isValidExtension(currentFilename.c_str())) {
+            _log(2, "Invalid file extension: %s", currentFilename.c_str());
+            return;
+        }
+        
+        // ファイルパスを作成
+        String fullPath = _uploadPath + "/" + currentFilename;
+        
+        // 上書き保護をチェック
+        if (_overwriteProtection && SD.exists(fullPath.c_str())) {
+            _log(2, "File already exists (overwrite protection): %s", currentFilename.c_str());
+            return;
+        }
+        
+        // ファイルを開く
+        uploadFile = SD.open(fullPath.c_str(), FILE_WRITE);
+        if (!uploadFile) {
+            _log(1, "Failed to open file for writing: %s", fullPath.c_str());
+            return;
+        }
+        
+        // コールバック: アップロード開始
+        if (_onUploadStart) {
+            _onUploadStart(currentFilename.c_str(), upload.totalSize);
+        }
+        
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (uploadFile) {
+            // ファイルサイズをチェック
+            currentFilesize += upload.currentSize;
+            if (currentFilesize > _maxFileSize) {
+                _log(2, "File too large: %d bytes (max: %d)", currentFilesize, _maxFileSize);
+                uploadFile.close();
+                String fullPath = _uploadPath + "/" + currentFilename;
+                SD.remove(fullPath.c_str());
+                return;
+            }
+            
+            // データを書き込み
+            size_t written = uploadFile.write(upload.buf, upload.currentSize);
+            if (written != upload.currentSize) {
+                _log(1, "Write error: expected %d, wrote %d", upload.currentSize, written);
+            }
+            
+            // コールバック: 進捗
+            if (_onUploadProgress) {
+                _onUploadProgress(currentFilename.c_str(), currentFilesize, upload.totalSize);
+            }
+        }
+        
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (uploadFile) {
+            uploadFile.close();
+            _totalUploaded += currentFilesize;
+            _log(3, "Upload Complete: %s (%d bytes)", currentFilename.c_str(), currentFilesize);
+            
+            // コールバック: アップロード完了
+            if (_onUploadComplete) {
+                _onUploadComplete(currentFilename.c_str(), currentFilesize, true);
+            }
+        }
+        
+    } else if (upload.status == UPLOAD_FILE_ABORTED) {
+        if (uploadFile) {
+            uploadFile.close();
+            String fullPath = _uploadPath + "/" + currentFilename;
+            SD.remove(fullPath.c_str());
+            _log(2, "Upload Aborted: %s", currentFilename.c_str());
+            
+            // コールバック: エラー
+            if (_onUploadError) {
+                _onUploadError(currentFilename.c_str(), ERR_UNKNOWN, "Upload aborted");
+            }
+        }
     }
-
-    _sendJSONResponse(false, "No file data found");
 }
 
 void M5StackWiFiUploader::_handleListFiles() {
@@ -891,4 +946,10 @@ void M5StackWiFiUploader::_closeAllSessions() {
         }
     }
     _activeSessions.clear();
+}
+
+void M5StackWiFiUploader::_handleDebugLog() {
+    String message = _webServer->arg("message");
+    Serial.printf("[WEB_DEBUG] %s\n", message.c_str());
+    _webServer->send(200, "text/plain", "OK");
 }

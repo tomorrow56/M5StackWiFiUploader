@@ -7,25 +7,15 @@
 #include "RetryManager.h"
 #include "ProgressTracker.h"
 #include "WebSocketHandler.h"
+#include "SDCardManager.h"
 #include <FS.h>
 #include <SD.h>
 #include <functional>
 #include <vector>
 #include <map>
 
-// ============================================================================
-// エラーコード定義
-// ============================================================================
-enum UploadError {
-    ERR_SUCCESS = 0,
-    ERR_FILE_TOO_LARGE = 1,
-    ERR_INVALID_EXTENSION = 2,
-    ERR_SD_WRITE_FAILED = 3,
-    ERR_INVALID_REQUEST = 4,
-    ERR_TIMEOUT = 5,
-    ERR_OUT_OF_MEMORY = 6,
-    ERR_UNKNOWN = 255
-};
+// デフォルトWebSocketポート
+#define DEFAULT_WS_PORT 81
 
 // ============================================================================
 // コールバック型定義
@@ -237,6 +227,7 @@ private:
 
     // HTTPハンドラー
     void _handleUploadHTTP();
+    void _handleUploadData();  // マルチパートアップロードハンドラー
     void _handleUploadWebSocket();
     void _handleListFiles();
     void _handleDeleteFile();
@@ -244,6 +235,7 @@ private:
     void _handleFileListDetailed();
     void _handleFileDownload();
     void _handleRoot();
+    void _handleDebugLog();
 
     // ファイル操作
     bool _saveFile(const char* filename, uint8_t* data, uint32_t size);

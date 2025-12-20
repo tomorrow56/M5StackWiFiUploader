@@ -6,9 +6,10 @@
  * ブラウザのUIから複数ファイルを選択してアップロードできます。
  */
 
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include "M5StackWiFiUploader.h"
+#include "SDCardManager.h"
 
 // ============================================================================
 // WiFi設定
@@ -43,7 +44,8 @@ void onUploadStart(const char* filename, uint32_t filesize) {
 }
 
 void onUploadProgress(const char* filename, uint32_t uploaded, uint32_t total) {
-    uint8_t progress = (uploaded * 100) / total;
+    // 0除算防止
+    uint8_t progress = (total > 0) ? (uploaded * 100) / total : 0;
     
     static uint8_t lastProgress = 0;
     if (progress % 10 == 0 && progress != lastProgress) {
@@ -79,45 +81,45 @@ void onUploadError(const char* filename, uint8_t errorCode, const char* message)
 // ============================================================================
 
 void displayStatus() {
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(2);
+    M5.Display.fillScreen(BLACK);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(2);
     
-    M5.Lcd.printf("Upload Status\n");
-    M5.Lcd.printf("Total: %d\n", stats.totalFiles);
-    M5.Lcd.printf("Done: %d\n", stats.completedFiles);
-    M5.Lcd.printf("Failed: %d\n", stats.failedFiles);
+    M5.Display.printf("Upload Status\n");
+    M5.Display.printf("Total: %d\n", stats.totalFiles);
+    M5.Display.printf("Done: %d\n", stats.completedFiles);
+    M5.Display.printf("Failed: %d\n", stats.failedFiles);
     
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.printf("Data: %.2f MB\n", stats.totalBytes / 1024.0 / 1024.0);
+    M5.Display.setTextSize(1);
+    M5.Display.printf("Data: %.2f MB\n", stats.totalBytes / 1024.0 / 1024.0);
     
     if (stats.totalFiles > 0) {
         uint8_t progress = (stats.completedFiles * 100) / stats.totalFiles;
-        M5.Lcd.printf("Progress: %d%%\n", progress);
+        M5.Display.printf("Progress: %d%%\n", progress);
     }
 }
 
 void displayServerInfo() {
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextColor(GREEN);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.println("Server Ready!");
+    M5.Display.fillScreen(BLACK);
+    M5.Display.setTextColor(GREEN);
+    M5.Display.setTextSize(2);
+    M5.Display.println("Server Ready!");
     
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.printf("URL: %s\n", uploader.getServerURL().c_str());
-    M5.Lcd.printf("IP: %s\n", uploader.getServerIP().c_str());
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(1);
+    M5.Display.printf("URL: %s\n", uploader.getServerURL().c_str());
+    M5.Display.printf("IP: %s\n", uploader.getServerIP().c_str());
     
     // SDカード情報
     uint32_t freeSpace = uploader.getSDFreeSpace();
     uint32_t totalSpace = uploader.getSDTotalSpace();
-    M5.Lcd.printf("SD: %.1f / %.1f MB\n", 
+    M5.Display.printf("SD: %.1f / %.1f MB\n", 
                  freeSpace / 1024.0 / 1024.0,
                  totalSpace / 1024.0 / 1024.0);
     
-    M5.Lcd.setTextColor(YELLOW);
-    M5.Lcd.printf("Access above URL\n");
-    M5.Lcd.printf("to upload files\n");
+    M5.Display.setTextColor(YELLOW);
+    M5.Display.printf("Access above URL\n");
+    M5.Display.printf("to upload files\n");
 }
 
 // ============================================================================
@@ -127,10 +129,10 @@ void displayServerInfo() {
 void setupWiFi() {
     Serial.println("\n[WiFi] Connecting...");
     
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextColor(WHITE);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.println("Connecting WiFi...");
+    M5.Display.fillScreen(BLACK);
+    M5.Display.setTextColor(WHITE);
+    M5.Display.setTextSize(2);
+    M5.Display.println("Connecting WiFi...");
     
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -148,10 +150,10 @@ void setupWiFi() {
     } else {
         Serial.println("\n[WiFi] Failed!");
         
-        M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setTextColor(RED);
-        M5.Lcd.setTextSize(2);
-        M5.Lcd.println("WiFi Failed!");
+        M5.Display.fillScreen(BLACK);
+        M5.Display.setTextColor(RED);
+        M5.Display.setTextSize(2);
+        M5.Display.println("WiFi Failed!");
     }
 }
 
@@ -160,11 +162,25 @@ void setupWiFi() {
 // ============================================================================
 
 void setup() {
-    M5.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
     Serial.begin(115200);
     delay(100);
     
     Serial.println("\n\n=== M5Stack WiFi Uploader - Multi-File Example ===\n");
+    
+    // SDカード初期化
+    Serial.println("[Setup] Initializing SD Card...");
+    if (!SDCardManager::initialize()) {
+        Serial.println("[Setup] ERROR: SD Card initialization failed!");
+        M5.Display.fillScreen(BLACK);
+        M5.Display.setTextColor(RED);
+        M5.Display.setTextSize(2);
+        M5.Display.println("SD Card Failed!");
+        delay(3000);
+    } else {
+        Serial.println("[Setup] SD Card initialized successfully!");
+    }
     
     // WiFiに接続
     setupWiFi();
@@ -204,10 +220,10 @@ void setup() {
     } else {
         Serial.println("[Setup] Failed to start uploader");
         
-        M5.Lcd.fillScreen(BLACK);
-        M5.Lcd.setTextColor(RED);
-        M5.Lcd.setTextSize(2);
-        M5.Lcd.println("Server Failed!");
+        M5.Display.fillScreen(BLACK);
+        M5.Display.setTextColor(RED);
+        M5.Display.setTextSize(2);
+        M5.Display.println("Server Failed!");
     }
     
     delay(2000);

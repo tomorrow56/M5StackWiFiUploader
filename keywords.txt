@@ -1,0 +1,219 @@
+#######################################
+# Syntax Coloring Map For M5Stack WiFi Uploader
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+M5StackWiFiUploader	KEYWORD1
+ErrorHandler	KEYWORD1
+SDCardManager	KEYWORD1
+FileValidator	KEYWORD1
+RetryManager	KEYWORD1
+ProgressTracker	KEYWORD1
+WebSocketHandler	KEYWORD1
+
+UploadSession	KEYWORD1
+ErrorInfo	KEYWORD1
+FileInfo	KEYWORD1
+ProgressInfo	KEYWORD1
+OverallProgress	KEYWORD1
+RetryConfig	KEYWORD1
+WSFileInfo	KEYWORD1
+
+UploadError	KEYWORD1
+UploadErrorCode	KEYWORD1
+RetryStrategy	KEYWORD1
+WSMessageType	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+# M5StackWiFiUploader
+begin	KEYWORD2
+handleClient	KEYWORD2
+end	KEYWORD2
+isRunning	KEYWORD2
+setMaxFileSize	KEYWORD2
+setAllowedExtensions	KEYWORD2
+setUploadPath	KEYWORD2
+setDebugLevel	KEYWORD2
+enableWebSocket	KEYWORD2
+setOverwriteProtection	KEYWORD2
+onUploadStart	KEYWORD2
+onUploadProgress	KEYWORD2
+onUploadComplete	KEYWORD2
+onUploadError	KEYWORD2
+getTotalUploaded	KEYWORD2
+getActiveUploads	KEYWORD2
+getServerIP	KEYWORD2
+getServerURL	KEYWORD2
+getSDFreeSpace	KEYWORD2
+getSDTotalSpace	KEYWORD2
+fileExists	KEYWORD2
+deleteFile	KEYWORD2
+listFiles	KEYWORD2
+
+# ErrorHandler
+logError	KEYWORD2
+getLastError	KEYWORD2
+getErrorHistory	KEYWORD2
+clearErrorHistory	KEYWORD2
+setErrorCallback	KEYWORD2
+setRecoveryCallback	KEYWORD2
+isRecoverable	KEYWORD2
+isFatal	KEYWORD2
+getErrorCodeString	KEYWORD2
+getErrorDescription	KEYWORD2
+getTotalErrors	KEYWORD2
+getRecoverableErrors	KEYWORD2
+getFatalErrors	KEYWORD2
+getErrorRate	KEYWORD2
+resetStatistics	KEYWORD2
+
+# SDCardManager
+initialize	KEYWORD2
+isConnected	KEYWORD2
+dirExists	KEYWORD2
+createDir	KEYWORD2
+deleteDir	KEYWORD2
+getFileSize	KEYWORD2
+readFile	KEYWORD2
+writeFile	KEYWORD2
+writeText	KEYWORD2
+readText	KEYWORD2
+listFilesWithInfo	KEYWORD2
+getFileInfo	KEYWORD2
+getFileCount	KEYWORD2
+getTotalSpace	KEYWORD2
+getUsedSpace	KEYWORD2
+getFreeSpace	KEYWORD2
+getUsagePercent	KEYWORD2
+isValidFilename	KEYWORD2
+sanitizeFilename	KEYWORD2
+getFileExtension	KEYWORD2
+getBaseName	KEYWORD2
+isAbsolutePath	KEYWORD2
+normalizePath	KEYWORD2
+copyFile	KEYWORD2
+moveFile	KEYWORD2
+getLastModified	KEYWORD2
+
+# FileValidator
+isSafeFilename	KEYWORD2
+isAllowedExtension	KEYWORD2
+getExtension	KEYWORD2
+isValidFileSize	KEYWORD2
+formatFileSize	KEYWORD2
+getMimeType	KEYWORD2
+isImageMimeType	KEYWORD2
+isTextMimeType	KEYWORD2
+isBinaryMimeType	KEYWORD2
+validateMagicNumber	KEYWORD2
+isJPEG	KEYWORD2
+isPNG	KEYWORD2
+isGIF	KEYWORD2
+isBMP	KEYWORD2
+validateFile	KEYWORD2
+getLastErrorMessage	KEYWORD2
+
+# RetryManager
+setConfig	KEYWORD2
+getConfig	KEYWORD2
+setMaxRetries	KEYWORD2
+setInitialDelay	KEYWORD2
+setStrategy	KEYWORD2
+onRetryAttempt	KEYWORD2
+onRetryComplete	KEYWORD2
+executeWithRetry	KEYWORD2
+shouldRetry	KEYWORD2
+calculateDelay	KEYWORD2
+getTotalRetries	KEYWORD2
+getSuccessfulRetries	KEYWORD2
+getFailedRetries	KEYWORD2
+getRetrySuccessRate	KEYWORD2
+getDefaultConfig	KEYWORD2
+getAggressiveConfig	KEYWORD2
+getConservativeConfig	KEYWORD2
+
+# ProgressTracker
+startUpload	KEYWORD2
+updateProgress	KEYWORD2
+completeUpload	KEYWORD2
+pauseUpload	KEYWORD2
+resumeUpload	KEYWORD2
+cancelUpload	KEYWORD2
+getProgress	KEYWORD2
+getOverallProgress	KEYWORD2
+getTransferSpeed	KEYWORD2
+getRemainingTime	KEYWORD2
+getActiveSessionCount	KEYWORD2
+onProgressUpdate	KEYWORD2
+onOverallProgress	KEYWORD2
+onSpeedUpdate	KEYWORD2
+setSpeedUpdateInterval	KEYWORD2
+setSpeedSamples	KEYWORD2
+getTotalUploads	KEYWORD2
+getSuccessfulUploads	KEYWORD2
+getFailedUploads	KEYWORD2
+getTotalBytesTransferred	KEYWORD2
+getAverageSpeed	KEYWORD2
+formatBytes	KEYWORD2
+formatSpeed	KEYWORD2
+formatTime	KEYWORD2
+
+# WebSocketHandler
+onFileInfo	KEYWORD2
+onData	KEYWORD2
+onMessage	KEYWORD2
+onConnect	KEYWORD2
+onDisconnect	KEYWORD2
+sendProgress	KEYWORD2
+sendComplete	KEYWORD2
+sendError	KEYWORD2
+sendText	KEYWORD2
+sendBinary	KEYWORD2
+broadcast	KEYWORD2
+getClientCount	KEYWORD2
+isClientConnected	KEYWORD2
+disconnectClient	KEYWORD2
+setMaxChunkSize	KEYWORD2
+setTimeout	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+# UploadError / UploadErrorCode
+ERR_SUCCESS	LITERAL1
+ERR_FILE_TOO_LARGE	LITERAL1
+ERR_INVALID_EXTENSION	LITERAL1
+ERR_SD_WRITE_FAILED	LITERAL1
+ERR_INVALID_REQUEST	LITERAL1
+ERR_TIMEOUT	LITERAL1
+ERR_OUT_OF_MEMORY	LITERAL1
+ERR_CONNECTION_LOST	LITERAL1
+ERR_SD_FULL	LITERAL1
+ERR_SD_NOT_READY	LITERAL1
+ERR_INVALID_DATA	LITERAL1
+ERR_CHECKSUM_MISMATCH	LITERAL1
+ERR_MAX_RETRIES_EXCEEDED	LITERAL1
+ERR_CANCELLED	LITERAL1
+ERR_UNKNOWN	LITERAL1
+
+# RetryStrategy
+RETRY_FIXED	LITERAL1
+RETRY_LINEAR	LITERAL1
+RETRY_EXPONENTIAL	LITERAL1
+
+# WSMessageType
+WS_MSG_FILE_INFO	LITERAL1
+WS_MSG_FILE_DATA	LITERAL1
+WS_MSG_PROGRESS	LITERAL1
+WS_MSG_COMPLETE	LITERAL1
+WS_MSG_ERROR	LITERAL1
+WS_MSG_CANCEL	LITERAL1
+WS_MSG_PAUSE	LITERAL1
+WS_MSG_RESUME	LITERAL1

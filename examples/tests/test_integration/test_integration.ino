@@ -4,7 +4,7 @@
  * M5StackWiFiUploader ライブラリの統合テストを実行します。
  */
 
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include "M5StackWiFiUploader.h"
 
@@ -15,7 +15,8 @@ const char* WIFI_PASSWORD = "test_password";
 M5StackWiFiUploader uploader;
 
 void setup() {
-    M5.begin();
+    auto cfg = M5.config();
+    M5.begin(cfg);
     Serial.begin(115200);
     delay(1000);
     

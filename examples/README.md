@@ -1,10 +1,12 @@
 # M5Stack WiFi Uploader - サンプルコード
 
-このディレクトリには、M5Stack WiFi Uploaderライブラリの使用例が含まれています。
+このディレクトリには、M5Stack WiFi Uploaderライブラリの使用例とテストコードが含まれています。
 
 ## サンプル一覧
 
-### 1. HTTPUploadExample
+### 基本サンプル
+
+#### 1. HTTPUploadExample
 
 **ファイル**: `HTTPUploadExample/HTTPUploadExample.ino`
 
@@ -20,7 +22,7 @@
 
 ---
 
-### 2. MultiFileUploadExample
+#### 2. MultiFileUploadExample
 
 **ファイル**: `MultiFileUploadExample/MultiFileUploadExample.ino`
 
@@ -34,7 +36,7 @@
 
 ---
 
-### 3. WebSocketUploadExample
+#### 3. WebSocketUploadExample
 
 **ファイル**: `WebSocketUploadExample/WebSocketUploadExample.ino`
 
@@ -50,7 +52,7 @@
 
 ---
 
-### 4. APModeExample
+#### 4. APModeExample
 
 **ファイル**: `APModeExample/APModeExample.ino`
 
@@ -72,7 +74,7 @@
 
 ---
 
-### 5. FullFeaturedDemo
+#### 5. FullFeaturedDemo
 
 **ファイル**: `FullFeaturedDemo/FullFeaturedDemo.ino`
 
@@ -86,6 +88,69 @@
 - 統計情報表示
 
 **推奨**: ライブラリの全機能を確認したい場合や、実際のアプリケーション開発の参考にしてください。
+
+---
+
+#### 6. FileDownloadExample
+
+**ファイル**: `FileDownloadExample/FileDownloadExample.ino`
+
+**説明**: SDカード内のファイルをWeb UI経由でダウンロードする機能のサンプルです。
+
+**主な機能**:
+- ファイル一覧表示
+- ファイルダウンロード
+- ファイル削除
+
+---
+
+### テストコード
+
+テストコードは `tests/` フォルダに格納されています。ライブラリの各コンポーネントの動作確認に使用できます。
+
+#### 1. test_error_handler
+
+**ファイル**: `tests/test_error_handler/test_error_handler.ino`
+
+**説明**: ErrorHandlerクラスの機能テストです。
+
+**テスト内容**:
+- エラーログ記録
+- エラー履歴取得
+- 回復可能エラーの判定
+- エラー統計
+- エラーコールバック
+
+---
+
+#### 2. test_progress_tracker
+
+**ファイル**: `tests/test_progress_tracker/test_progress_tracker.ino`
+
+**説明**: ProgressTrackerクラスの機能テストです。
+
+**テスト内容**:
+- 進捗追跡
+- 転送速度計算
+- 残り時間計算
+- 複数ファイルの進捗管理
+- フォーマット関数
+- 一時停止/再開
+
+---
+
+#### 3. test_integration
+
+**ファイル**: `tests/test_integration/test_integration.ino`
+
+**説明**: M5StackWiFiUploaderライブラリの統合テストです。
+
+**テスト内容**:
+- 初期化テスト
+- 設定テスト
+- コールバックテスト
+- SDカード操作テスト
+- ステータス取得テスト
 
 ---
 
