@@ -166,6 +166,44 @@ Test code is stored in `tests/` folder. Can be used to verify operation of each 
 4. Check IP address in serial monitor.
 5. Access that IP address in browser.
 
+## How to Change Allowed Extensions (Transferable Files)
+
+This library validates the file extension on upload.
+You can override the allowed extensions from your sketch by calling `setAllowedExtensions()`.
+
+### Steps (Recommended)
+
+1. Prepare a list of allowed extensions (without dot).
+2. Call `setAllowedExtensions()` after `begin()`.
+
+```cpp
+const char* allowedExtensions[] = {
+  "bin",
+  "txt",
+  "json",
+};
+
+uploader.setAllowedExtensions(
+  allowedExtensions,
+  sizeof(allowedExtensions) / sizeof(allowedExtensions[0])
+);
+```
+
+### Notes
+
+- Specify extensions **without a dot** (e.g. `"bin"`).
+- **Lowercase is recommended** (the library converts the uploaded file's extension to lowercase before comparing).
+- If the allow list is empty (`count == 0`), the extension check always fails and uploads will be rejected.
+- Currently, **the download feature is not restricted by extension** (it only checks for path traversal, etc.).
+
+### Default Allowed Extensions
+
+If you do not change the setting, the following extensions are allowed by default.
+
+- `jpg`, `jpeg`, `png`, `gif`, `bmp`
+- `bin`, `dat`, `txt`, `csv`, `json`
+- `zip`, `rar`, `7z`, `tar`, `gz`
+
 ## Troubleshooting
 
 If problems occur, please refer to the [Troubleshooting Guide](../docs/TROUBLESHOOTING.md).

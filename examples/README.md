@@ -166,6 +166,44 @@
 4. シリアルモニタでIPアドレスを確認します。
 5. ブラウザでそのIPアドレスにアクセスします。
 
+## 許可拡張子（転送可能ファイル）の変更方法
+
+このライブラリは、アップロード時にファイル拡張子を検証します。
+許可拡張子はスケッチ側から `setAllowedExtensions()` で上書きできます。
+
+### 変更手順（推奨）
+
+1. 許可したい拡張子（ドットなし）を配列で用意します。
+2. `begin()` の後に `setAllowedExtensions()` を呼び出します。
+
+```cpp
+const char* allowedExtensions[] = {
+  "bin",
+  "txt",
+  "json",
+};
+
+uploader.setAllowedExtensions(
+  allowedExtensions,
+  sizeof(allowedExtensions) / sizeof(allowedExtensions[0])
+);
+```
+
+### 注意点
+
+- **拡張子はドットなし**で指定します（例: `"bin"`）。
+- **小文字での指定を推奨**します（内部で小文字化して比較されます）。
+- 許可リストが空（`count == 0`）の場合、拡張子チェックが常に失敗し、アップロードできません。
+- 現状、**ダウンロード機能は拡張子で制限していません**（パストラバーサル等のチェックのみ行います）。
+
+### デフォルトの許可拡張子
+
+何も設定しない場合、デフォルトで以下が許可されています。
+
+- `jpg`, `jpeg`, `png`, `gif`, `bmp`
+- `bin`, `dat`, `txt`, `csv`, `json`
+- `zip`, `rar`, `7z`, `tar`, `gz`
+
 ## トラブルシューティング
 
 問題が発生した場合は、[トラブルシューティングガイド](../docs/TROUBLESHOOTING.md)を参照してください。
