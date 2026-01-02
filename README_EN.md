@@ -102,6 +102,7 @@ void loop() {
 
 - **[API Reference](docs/API_REFERENCE_v1.1.md)**: Detailed specifications for all classes and methods.
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Common issues and their solutions.
+- **[Examples Reference](examples/README_EN.md)**: Detailes usage for example applications.
 
 ## 🤝 Contributing
 
