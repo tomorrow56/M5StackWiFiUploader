@@ -10,7 +10,7 @@ This library starts an HTTP/WebSocket server on your M5Stack device, allowing yo
 
 [日本語版](README.md)
 
-## ✨ Key Features
+## Key Features
 
 - **Dual Protocol Support**: Supports both fast WebSocket and compatible HTTP protocols.
 - **Robust Error Handling**: Features 14 error codes and an automatic retry mechanism with exponential backoff.
@@ -22,18 +22,26 @@ This library starts an HTTP/WebSocket server on your M5Stack device, allowing yo
 - **Operation Control**: Pause, resume, and cancel uploads.
 - **Lightweight Design**: Built primarily on standard ESP32 libraries to minimize external dependencies.
 
-## 🛠️ Supported Models
+## Supported Models
 
 - M5Stack Core
 - M5Stack Core2
 - M5Stack CoreS3
 
-## 📚 Dependencies
+## Dependencies
 
 - **M5Unified** 0.2.11 or later
-- `WiFi`, `WebServer`, `FS`, `SD` (Built into ESP32 Arduino Core 3.x)
-- `WebSocketsServer` (Included with this library)
-- `ArduinoJson` (Included with this library)
+- `WiFi`, `WebServer`, `FS`, `SD` (Built into ESP32 Arduino Core)
+- `WebSocketsServer`
+- `ArduinoJson`
+
+## Syatem Diagram
+
+![system diagram](img/system.png)
+
+## Class Diagram
+
+![class diagram](img/class.png)
 
 ## 🚀 Installation
 
