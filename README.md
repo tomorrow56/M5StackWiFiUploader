@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-ESP32-lightgrey.svg)](https://www.espressif.com/en/products/socs/esp32)
 
-**M5StackのSDカードにWiFi経由でファイルをアップロードするためのArduinoライブラリ**
+**M5StackのSDカードにWiFi経由でファイルをアップロードするためのArduinoライブラリです**
 
 このライブラリは、M5Stackデバイス上でHTTP/WebSocketサーバーを起動し、ブラウザ経由で写真、バイナリ、テキストファイルなどをSDカードに直接アップロードする機能を提供します。プログレス表示、自動再試行、エラーハンドリングなど、ファイル転送を実現するために必要な機能を備えています。
 
@@ -44,13 +44,13 @@
 
 ![class diagram](img/class.png)
 
-## 🚀 インストール
+## インストール
 
 1.  リリースページから最新版の `M5StackWiFiUploader.zip` をダウンロードします。
 2.  Arduino IDEで `スケッチ` -> `ライブラリをインクルード` -> `.ZIP形式のライブラリをインストール` を選択します。
 3.  ダウンロードしたZIPファイルを選択してインストールします。
 
-## 💡 使い方
+## 使い方
 
 基本的な使い方は `examples/FullFeaturedDemo/FullFeaturedDemo.ino` を参照してください。
 
@@ -107,7 +107,7 @@ void loop() {
 }
 ```
 
-## 📥 ファイルダウンロード機能
+## ファイルダウンロード機能
 
 ### 主な機能
 
@@ -164,16 +164,16 @@ Web UIでは、以下の情報が表示されます：
 - ファイル存在チェック
 - Content-Dispositionヘッダーによる適切なファイル名設定
 
-## 📖 関連ドキュメント
+## 関連ドキュメント
 
 - **[APIリファレンス](docs/API_REFERENCE_v1.1.md)**
 - **[FAQ](docs/TROUBLESHOOTING.md)**
 - **[Exampleの説明](examples/README.md)**
 
-## 🤝 貢献
+## 貢献
 
 バグ報告や機能提案は [GitHub Issues](https://github.com/tomorrow56/M5StackWiFiUploader/issues) までお願いします。
 
-## 📜 ライセンス
+## ライセンス
 
 このライブラリは **MITライセンス** の下で公開されています。詳細は `LICENSE` ファイルを参照してください。
