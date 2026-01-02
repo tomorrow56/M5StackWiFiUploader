@@ -43,13 +43,13 @@ This library starts an HTTP/WebSocket server on your M5Stack device, allowing yo
 
 ![class diagram](img/class.png)
 
-## 🚀 Installation
+## Installation
 
 1.  Download the latest `M5StackWiFiUploader.zip` from the [Releases page](https://github.com/tomorrow56/M5StackWiFiUploader/releases).
 2.  In the Arduino IDE, go to `Sketch` -> `Include Library` -> `Add .ZIP Library...`.
 3.  Select the downloaded ZIP file to install it.
 
-## 💡 Usage
+## Usage
 
 Refer to `examples/FullFeaturedDemo/FullFeaturedDemo.ino` for a basic example.
 
@@ -106,16 +106,16 @@ void loop() {
 }
 ```
 
-## 📖 Documentation
+## Documentation
 
 - **[API Reference](docs/API_REFERENCE_v1.1.md)**: Detailed specifications for all classes and methods.
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Common issues and their solutions.
 - **[Examples Reference](examples/README_EN.md)**: Detailes usage for example applications.
 
-## 🤝 Contributing
+## Contributing
 
 Bug reports and feature requests are welcome on [GitHub Issues](https://github.com/tomorrow56/M5StackWiFiUploader/issues). Pull requests are also encouraged.
 
-## 📜 License
+## License
 
 This library is released under the **MIT License**. See the `LICENSE` file for details.
