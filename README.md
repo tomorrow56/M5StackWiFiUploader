@@ -10,7 +10,7 @@
 
 [English Version](README_EN.md)
 
-## ✨ 主な特徴
+## 主な特徴
 
 - **デュアルプロトコル対応**: 高速なWebSocketと互換性の高いHTTPの両方をサポート
 - **エラーハンドリング**: 14種類のエラーコードと自動再試行機能
@@ -23,18 +23,26 @@
 - **ファイル一覧表示**: ファイル名、サイズ、更新日時を表形式で表示
 - **軽量設計**: ESP32の標準ライブラリを中心に構成され、外部依存を最小限に抑制
 
-## 🛠️ 対応モデル
+## 対応モデル
 
 - M5Stack Core
 - M5Stack Core2
 - M5Stack CoreS3
 
-## 📚 依存ライブラリ
+## 依存ライブラリ
 
 - **M5Unified** 0.2.11以降
 - `WiFi`, `WebServer`, `FS`, `SD` (ESP32 Arduinoライブラリに内蔵)
 - `WebSocketsServer`
 - `ArduinoJson`
+
+## システム構成
+
+![system diagram](img/system.png)
+
+## クラス構成
+
+![class diagram](img/class.png)
 
 ## 🚀 インストール
 
