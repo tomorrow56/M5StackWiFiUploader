@@ -1,7 +1,7 @@
 
-# M5Stack WiFi Uploader - APIリファレンス (v1.1.0)
+# M5Stack WiFi Uploader - APIリファレンス (v1.3.0)
 
-**バージョン**: 1.1.0  
+**バージョン**: 1.3.0  
 **最終更新日**: 2025年12月9日
 
 ---
