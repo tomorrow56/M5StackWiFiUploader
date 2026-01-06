@@ -166,7 +166,7 @@ Web UIでは、以下の情報が表示されます：
 
 ## 関連ドキュメント
 
-- **[APIリファレンス](docs/API_REFERENCE_v1.1.md)**
+- **[APIリファレンス](docs/API_REFERENCE_v1.3.md)**
 - **[FAQ](docs/TROUBLESHOOTING.md)**
 - **[Exampleの説明](examples/README.md)**
 
