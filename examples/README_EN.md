@@ -8,7 +8,7 @@ This directory contains usage examples and test code for the M5Stack WiFi Upload
 
 #### 1. HTTPUploadExample
 
-<img src="../img/HTTPUploadExample.jpg" alt="HTTPUploadExample" width="300px">
+<img src="../img/HTTPUploadExample_en.jpg" alt="HTTPUploadExample" width="300px">
 
 **File**: `HTTPUploadExample/HTTPUploadExample.ino`
 
@@ -26,7 +26,7 @@ This directory contains usage examples and test code for the M5Stack WiFi Upload
 
 #### 2. MultiFileUploadExample
 
-<img src="../img/MultiFileUploadExample.jpg" alt="MultiFileUploadExample" width="300px">
+<img src="../img/MultiFileUploadExample_en.jpg" alt="MultiFileUploadExample" width="300px">
 
 **File**: `MultiFileUploadExample/MultiFileUploadExample.ino`
 
