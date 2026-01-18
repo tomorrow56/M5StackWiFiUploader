@@ -237,7 +237,7 @@ void M5StackWiFiUploader::_handleRoot() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M5Stack WiFi Uploader</title>
+    <title>WiFi File Uploader</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -332,7 +332,7 @@ void M5StackWiFiUploader::_handleRoot() {
             <button onclick="setLanguage('en')" id="lang-en">English</button>
         </div>
         
-        <h1 id="title">M5Stack WiFi File Uploader</h1>
+        <h1 id="title">WiFi File Uploader</h1>
         <p id="description">ファイルをドラッグ&ドロップするか、下のボタンをクリックしてアップロードしてください。</p>
         
         <div class="upload-area" id="uploadArea">
@@ -355,7 +355,7 @@ void M5StackWiFiUploader::_handleRoot() {
         // 多言語対応
         const translations = {
             ja: {
-                title: 'M5Stack WiFi File Uploader',
+                title: 'WiFi File Uploader',
                 description: 'ファイルをドラッグ&ドロップするか、下のボタンをクリックしてアップロードしてください。',
                 dropText: 'ここにファイルをドラッグ&ドロップ',
                 selectFile: 'ファイルを選択',
@@ -374,7 +374,7 @@ void M5StackWiFiUploader::_handleRoot() {
                 listError: 'ファイル一覧の取得に失敗しました'
             },
             en: {
-                title: 'M5Stack WiFi File Uploader',
+                title: 'WiFi File Uploader',
                 description: 'Drag and drop files here or click the button below to upload.',
                 dropText: 'Drag and drop files here',
                 selectFile: 'Select Files',
