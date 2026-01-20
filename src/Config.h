@@ -44,17 +44,69 @@
 #define DEFAULT_RETRY_BACKOFF_MULTIPLIER 2.0f
 
 // ============================================================================
-// 機能設定
+// フラッシュ削減モード設定
 // ============================================================================
+// LITE_MODE を有効にすると、フラッシュ使用量を大幅に削減（50-80KB削減）
+// ESP32 4MBフラッシュなどリソースが限られた環境で使用
+#ifndef LITE_MODE
+#define LITE_MODE 0  // 1=有効（軽量モード）, 0=無効（フル機能）
+#endif
 
-// WebSocketサポートを有効化
-#define ENABLE_WEBSOCKET 1
+// ============================================================================
+// 機能設定（個別制御可能）
+// ============================================================================
+// スケッチ(.ino)で個別に設定する場合は、#include前に定義してください
+// 例: #define ENABLE_WEBSOCKET 0
+
+// WebSocketサポートを有効化（削減効果: 30-50KB）
+#ifndef ENABLE_WEBSOCKET
+  #if LITE_MODE
+    #define ENABLE_WEBSOCKET 0
+  #else
+    #define ENABLE_WEBSOCKET 1
+  #endif
+#endif
 
 // ファイル上書き保護を有効化
+#ifndef ENABLE_OVERWRITE_PROTECTION
 #define ENABLE_OVERWRITE_PROTECTION 0
+#endif
 
-// デバッグログを有効化
-#define ENABLE_DEBUG_LOG 1
+// デバッグログを有効化（削減効果: 2-5KB）
+#ifndef ENABLE_DEBUG_LOG
+  #if LITE_MODE
+    #define ENABLE_DEBUG_LOG 0
+  #else
+    #define ENABLE_DEBUG_LOG 1
+  #endif
+#endif
+
+// 詳細な進捗追跡機能（転送速度、残り時間など）（削減効果: 10-15KB）
+#ifndef ENABLE_PROGRESS_TRACKER_FULL
+  #if LITE_MODE
+    #define ENABLE_PROGRESS_TRACKER_FULL 0
+  #else
+    #define ENABLE_PROGRESS_TRACKER_FULL 1
+  #endif
+#endif
+
+// 高度な再試行機能（指数バックオフなど）（削減効果: 5-10KB）
+#ifndef ENABLE_RETRY_MANAGER_FULL
+  #if LITE_MODE
+    #define ENABLE_RETRY_MANAGER_FULL 0
+  #else
+    #define ENABLE_RETRY_MANAGER_FULL 1
+  #endif
+#endif
+
+// 高度なHTTPエンドポイント（詳細リスト、ダウンロード、デバッグ）（削減効果: 3-5KB）
+#ifndef ENABLE_ADVANCED_ENDPOINTS
+  #if LITE_MODE
+    #define ENABLE_ADVANCED_ENDPOINTS 0
+  #else
+    #define ENABLE_ADVANCED_ENDPOINTS 1
+  #endif
+#endif
 
 // ============================================================================
 // パフォーマンス設定
@@ -104,18 +156,6 @@
 
 // デフォルトログレベル
 #define DEFAULT_LOG_LEVEL LOG_LEVEL_INFO
-
-// ============================================================================
-// エラーコード定義
-// ============================================================================
-#define ERR_SUCCESS             0
-#define ERR_FILE_TOO_LARGE      1
-#define ERR_INVALID_EXTENSION   2
-#define ERR_SD_WRITE_FAILED     3
-#define ERR_INVALID_REQUEST     4
-#define ERR_TIMEOUT             5
-#define ERR_OUT_OF_MEMORY       6
-#define ERR_UNKNOWN             255
 
 // ============================================================================
 // HTTP ステータスコード

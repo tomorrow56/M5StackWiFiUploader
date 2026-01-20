@@ -8,16 +8,24 @@
 
 M5StackWiFiUploader::M5StackWiFiUploader(uint16_t port)
     : _webServer(nullptr),
+#if ENABLE_WEBSOCKET
       _wsHandler(nullptr),
+#endif
       _port(port),
       _isRunning(false),
       _uploadPath("/uploads"),
       _maxFileSize(50 * 1024 * 1024),  // 50MB
       _debugLevel(1),
+#if ENABLE_WEBSOCKET
       _webSocketEnabled(false),
+#endif
       _overwriteProtection(false),
       _totalUploaded(0),
-      _nextSessionId(0) {
+      _nextSessionId(0),
+      _onUploadStart(nullptr),
+      _onUploadProgress(nullptr),
+      _onUploadComplete(nullptr),
+      _onUploadError(nullptr) {
     // デフォルト許可拡張子を設定
     _allowedExtensions = {
         "jpg", "jpeg", "png", "gif", "bmp",
@@ -35,6 +43,7 @@ M5StackWiFiUploader::~M5StackWiFiUploader() {
 // ============================================================================
 
 bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
+#if ENABLE_WEBSOCKET
     if (_webSocketEnabled) {
         _wsHandler = new WebSocketHandler(DEFAULT_WS_PORT);
         _wsHandler->begin();
@@ -42,6 +51,7 @@ bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
             // WebSocketデータ受信処理
         });
     }
+#endif
     _port = port;
     _uploadPath = uploadPath;
 
@@ -63,12 +73,16 @@ bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
         [this]() { _handleUploadData(); }
     );
     _webServer->on("/api/files", HTTP_GET, [this]() { _handleListFiles(); });
+#if ENABLE_ADVANCED_ENDPOINTS
     _webServer->on("/api/files/list", HTTP_GET, [this]() { _handleFileListDetailed(); });
     _webServer->on("/api/download", HTTP_GET, [this]() { _handleFileDownload(); });
+#endif
     _webServer->on("/api/delete", HTTP_DELETE, [this]() { _handleDeleteFile(); });
     _webServer->on("/api/delete", HTTP_POST, [this]() { _handleDeleteFile(); });
     _webServer->on("/api/status", HTTP_GET, [this]() { _handleStatus(); });
+#if ENABLE_ADVANCED_ENDPOINTS
     _webServer->on("/api/debug", HTTP_POST, [this]() { _handleDebugLog(); });
+#endif
 
     // アップロードディレクトリを確認・作成
     if (!_ensureUploadDirectory()) {
@@ -90,15 +104,19 @@ bool M5StackWiFiUploader::begin(uint16_t port, const char* uploadPath) {
 void M5StackWiFiUploader::handleClient() {
     if (!_isRunning) return;
     if (_webServer) _webServer->handleClient();
+#if ENABLE_WEBSOCKET
     if (_wsHandler) _wsHandler->handleClient();
+#endif
 }
 
 void M5StackWiFiUploader::end() {
+#if ENABLE_WEBSOCKET
     if (_wsHandler) {
         _wsHandler->end();
         delete _wsHandler;
         _wsHandler = nullptr;
     }
+#endif
     if (_webServer != nullptr) {
         _closeAllSessions();
         _webServer->stop();
@@ -137,8 +155,12 @@ void M5StackWiFiUploader::setDebugLevel(uint8_t level) {
 }
 
 void M5StackWiFiUploader::enableWebSocket(bool enable) {
+#if ENABLE_WEBSOCKET
     _webSocketEnabled = enable;
     _log(3, "WebSocket %s", enable ? "enabled" : "disabled");
+#else
+    _log(2, "WebSocket not available in LITE_MODE");
+#endif
 }
 
 void M5StackWiFiUploader::setOverwriteProtection(bool enable) {
@@ -625,19 +647,39 @@ void M5StackWiFiUploader::_handleUploadHTTP() {
 }
 
 void M5StackWiFiUploader::_handleUploadData() {
-    Serial.println("[DEBUG] _handleUploadData called");
     HTTPUpload& upload = _webServer->upload();
     static File uploadFile;
     static String currentFilename;
     static uint32_t currentFilesize;
-    
-    Serial.printf("[DEBUG] upload.status = %d\n", upload.status);
+    static uint32_t lastProgressSize = 0;
+    static uint32_t lastFlushSize = 0;
     
     if (upload.status == UPLOAD_FILE_START) {
+        // 既存のファイルハンドルが開いている場合はクローズ
+        if (uploadFile) {
+            uploadFile.close();
+        }
+        
         currentFilename = upload.filename;
         currentFilesize = 0;
         
+        // 進捗カウンタとフラッシュカウンタをリセット
+        lastProgressSize = 0;
+        lastFlushSize = 0;
+        
+        // SDカード空き容量を確認
+        uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+        uint64_t usedBytes = SD.usedBytes() / (1024 * 1024);
+        uint64_t totalBytes = SD.totalBytes() / (1024 * 1024);
+        uint64_t freeBytes = totalBytes - usedBytes;
+        
+        // ヒープメモリ状況を確認
+        uint32_t freeHeap = ESP.getFreeHeap();
+        uint32_t minFreeHeap = ESP.getMinFreeHeap();
+        
         _log(3, "Upload Start: %s", currentFilename.c_str());
+        _log(3, "SD Card - Total: %llu MB, Used: %llu MB, Free: %llu MB", totalBytes, usedBytes, freeBytes);
+        _log(3, "Heap - Free: %u bytes, Min Free: %u bytes", freeHeap, minFreeHeap);
         
         // ファイル名を検証
         if (!_isValidFilename(currentFilename.c_str())) {
@@ -670,8 +712,9 @@ void M5StackWiFiUploader::_handleUploadData() {
         }
         
         // コールバック: アップロード開始
-        if (_onUploadStart) {
-            _onUploadStart(currentFilename.c_str(), upload.totalSize);
+        // 注: upload.totalSizeはマルチパートの全体サイズなので、個別ファイルサイズとしては使えない
+        if (_onUploadStart != nullptr) {
+            _onUploadStart(currentFilename.c_str(), 0);  // サイズは不明なので0を渡す
         }
         
     } else if (upload.status == UPLOAD_FILE_WRITE) {
@@ -689,12 +732,30 @@ void M5StackWiFiUploader::_handleUploadData() {
             // データを書き込み
             size_t written = uploadFile.write(upload.buf, upload.currentSize);
             if (written != upload.currentSize) {
-                _log(1, "Write error: expected %d, wrote %d", upload.currentSize, written);
+                uint32_t freeHeap = ESP.getFreeHeap();
+                _log(1, "Write error: expected %d, wrote %d (Free heap: %u bytes)", upload.currentSize, written, freeHeap);
+                uploadFile.close();
+                String fullPath = _uploadPath + "/" + currentFilename;
+                SD.remove(fullPath.c_str());
+                
+                // コールバック: エラー
+                if (_onUploadError) {
+                    _onUploadError(currentFilename.c_str(), ERR_SD_WRITE_FAILED, "SD write failed");
+                }
+                return;
             }
             
-            // コールバック: 進捗
-            if (_onUploadProgress) {
-                _onUploadProgress(currentFilename.c_str(), currentFilesize, upload.totalSize);
+            // 256KBごとにflushしてSDカードへの書き込みを確実にする
+            if (currentFilesize - lastFlushSize >= 262144 || currentFilesize < lastFlushSize) {
+                uploadFile.flush();
+                delay(10);  // SDカードの書き込み完了を待つ
+                lastFlushSize = currentFilesize;
+            }
+            
+            // コールバック: 進捗 (64KBごとに呼び出してメモリ負荷を軽減)
+            if (_onUploadProgress && (currentFilesize - lastProgressSize >= 65536 || currentFilesize < lastProgressSize)) {
+                _onUploadProgress(currentFilename.c_str(), currentFilesize, currentFilesize);
+                lastProgressSize = currentFilesize;
             }
         }
         
@@ -814,6 +875,7 @@ void M5StackWiFiUploader::_handleStatus() {
     _webServer->send(200, "application/json", json);
 }
 
+#if ENABLE_ADVANCED_ENDPOINTS
 void M5StackWiFiUploader::_handleFileListDetailed() {
     _log(3, "Handling detailed file list request");
     
@@ -839,7 +901,9 @@ void M5StackWiFiUploader::_handleFileListDetailed() {
     
     _webServer->send(200, "application/json", json);
 }
+#endif
 
+#if ENABLE_ADVANCED_ENDPOINTS
 void M5StackWiFiUploader::_handleFileDownload() {
     if (!_webServer->hasArg("filename")) {
         _sendJSONResponse(false, "Missing filename parameter", nullptr);
@@ -880,6 +944,7 @@ void M5StackWiFiUploader::_handleFileDownload() {
     file.close();
     _log(3, "File download completed: %s (%d bytes)", filename.c_str(), fileSize);
 }
+#endif
 
 // ============================================================================
 // プライベートメソッド - ファイル操作
@@ -987,6 +1052,7 @@ bool M5StackWiFiUploader::_ensureUploadDirectory() {
 // ============================================================================
 
 void M5StackWiFiUploader::_log(uint8_t level, const char* format, ...) {
+#if ENABLE_DEBUG_LOG
     if (level > _debugLevel) {
         return;
     }
@@ -1007,6 +1073,7 @@ void M5StackWiFiUploader::_log(uint8_t level, const char* format, ...) {
     }
 
     Serial.printf("%s %s\n", levelStr, buffer);
+#endif
 }
 
 void M5StackWiFiUploader::_sendJSONResponse(bool success, const char* message, const char* filename) {
@@ -1086,8 +1153,10 @@ void M5StackWiFiUploader::_closeAllSessions() {
     _activeSessions.clear();
 }
 
+#if ENABLE_ADVANCED_ENDPOINTS
 void M5StackWiFiUploader::_handleDebugLog() {
     String message = _webServer->arg("message");
     Serial.printf("[WEB_DEBUG] %s\n", message.c_str());
     _webServer->send(200, "text/plain", "OK");
 }
+#endif

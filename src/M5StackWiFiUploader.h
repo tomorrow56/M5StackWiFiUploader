@@ -3,10 +3,13 @@
 
 #include <Arduino.h>
 #include <WebServer.h>
+#include "Config.h"
 #include "ErrorHandler.h"
 #include "RetryManager.h"
 #include "ProgressTracker.h"
+#if ENABLE_WEBSOCKET
 #include "WebSocketHandler.h"
+#endif
 #include "SDCardManager.h"
 #include <FS.h>
 #include <SD.h>
@@ -201,14 +204,18 @@ private:
     ErrorHandler _errorHandler;
     RetryManager _retryManager;
     ProgressTracker _progressTracker;
+#if ENABLE_WEBSOCKET
     WebSocketHandler* _wsHandler;
+#endif
     uint16_t _port;
     bool _isRunning;
     String _uploadPath;
     uint32_t _maxFileSize;
     std::vector<String> _allowedExtensions;
     uint8_t _debugLevel;
+#if ENABLE_WEBSOCKET
     bool _webSocketEnabled;
+#endif
     bool _overwriteProtection;
     uint32_t _totalUploaded;
     
@@ -216,10 +223,10 @@ private:
     uint8_t _nextSessionId;
 
     // コールバック
-    UploadCallback _onUploadStart;
-    ProgressCallback _onUploadProgress;
-    CompleteCallback _onUploadComplete;
-    ErrorCallback _onUploadError;
+    UploadCallback _onUploadStart = nullptr;
+    ProgressCallback _onUploadProgress = nullptr;
+    CompleteCallback _onUploadComplete = nullptr;
+    ErrorCallback _onUploadError = nullptr;
 
     // ========================================================================
     // プライベートメソッド
@@ -228,14 +235,18 @@ private:
     // HTTPハンドラー
     void _handleUploadHTTP();
     void _handleUploadData();  // マルチパートアップロードハンドラー
+#if ENABLE_WEBSOCKET
     void _handleUploadWebSocket();
+#endif
     void _handleListFiles();
     void _handleDeleteFile();
     void _handleStatus();
+#if ENABLE_ADVANCED_ENDPOINTS
     void _handleFileListDetailed();
     void _handleFileDownload();
-    void _handleRoot();
     void _handleDebugLog();
+#endif
+    void _handleRoot();
 
     // ファイル操作
     bool _saveFile(const char* filename, uint8_t* data, uint32_t size);
