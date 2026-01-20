@@ -63,7 +63,7 @@
 // WiFi設定
 // ========================================================================
 const char* WIFI_SSID = "<your SSID>";
-const char* WIFI_PASSWORD = "<Your Password>;
+const char* WIFI_PASSWORD = "<Your Password>";
 
 // ========================================================================
 // SDカードSPI設定
