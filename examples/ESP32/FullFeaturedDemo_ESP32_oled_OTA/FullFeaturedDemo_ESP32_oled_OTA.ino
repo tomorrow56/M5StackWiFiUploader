@@ -1,15 +1,16 @@
 /**
- * WiFi File Uploader - Full Featured Demo
+ * WiFi File Uploader - Full-Featured Demo with OTA Update
  * 
  * Features:
  * - HTTP/WebSocket server
- * - Status output via Serial Port
+ * - Status output via Serial
  * - Error handling
  * - Progress display
  * - LED control
  * - 0.91-inch OLED
  *   - SSD1306
  *   - 128*32 pixels
+ * - OTA update support
  */
 
 #include <WiFi.h>
@@ -17,10 +18,12 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <WebServer.h>
+#include <ESP32FwUploader.h>
 #include "M5StackWiFiUploader.h"
 #include "SDCardManager.h"
 
-// Timer interrupt
+// Timer
 #include "esp_timer.h"
 #include "hal/timer_hal.h"
 
@@ -31,13 +34,13 @@
 bool Websocket_Enabled = true;
 
 // ========================================================================
-// WiFi Settings
+// WiFi settings
 // ========================================================================
 #ifdef APMODE
-const char* AP_SSID = "M5Stack-AP";           // Access point name	 
-const char* AP_PASSWORD = "12345678";         // Password (8+ chars)	 
-const IPAddress AP_IP(192, 168, 4, 1);        // AP Mode IP address	 
-const IPAddress AP_GATEWAY(192, 168, 4, 1);   // Gateway	 
+const char* AP_SSID = "M5Stack-AP";           // Access point name
+const char* AP_PASSWORD = "12345678";         // Password (8+ chars)
+const IPAddress AP_IP(192, 168, 4, 1);        // AP Mode IP address
+const IPAddress AP_GATEWAY(192, 168, 4, 1);   // Gateway
 const IPAddress AP_SUBNET(255, 255, 255, 0);  // Subnet mask
 #else
 const char* WIFI_SSID = "your_wifi_ssid";
@@ -45,7 +48,16 @@ const char* WIFI_PASSWORD = "your_wifi_password";
 #endif
 
 // ========================================================================
-// OLED SSD1306 Settings (Adafruit)
+// OTA settings
+// ========================================================================
+static const char* OTA_USERNAME = "admin";
+static const char* OTA_PASSWORD = "password123";
+
+static const uint16_t OTA_PORT = 8080;
+WebServer otaServer(OTA_PORT);
+
+// ========================================================================
+// OLED SSD1306 settings (Adafruit)
 // ========================================================================
 #define OLED_SDA 21
 #define OLED_SCL 22
@@ -57,7 +69,7 @@ const char* WIFI_PASSWORD = "your_wifi_password";
 Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // ========================================================================
-// SD Card SPI Settings
+// SD card SPI settings
 // ========================================================================
 #define SD_CS 5
 #define SD_MOSI 23
@@ -65,18 +77,18 @@ Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #define SD_SCK 18
 
 // ========================================================================
-// LED Settings (WS2812B)
+// LED settings (WS2812B)
 // ========================================================================
 #define LED_PIN 27
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
 // ========================================================================
-// Global Variables
+// Global variables
 // ========================================================================
 M5StackWiFiUploader uploader;
 
-// State management
+// State
 enum AppState {
     STATE_INIT,
     STATE_WIFI_CONNECTING,
@@ -91,9 +103,9 @@ uint8_t activeUploads = 0;
 uint32_t totalUploaded = 0;
 String lastUploadedFile = "";
 
-// LED control timer
+// Timer for LED control
 volatile bool ledState = false;  // Blink flag (volatile)
-volatile bool isUploading = false;  // Transfer in progress flag (volatile)
+volatile bool isUploading = false;  // Transfer-in-progress flag (volatile)
 volatile unsigned long blinkInterval = 500000;  // Blink interval (microseconds)
 esp_timer_handle_t ledTimer;
 
@@ -147,11 +159,45 @@ void setup() {
     connectWiFi();
 #endif
     
-    // Uploader configuration (set callbacks before begin())
+    // OTA settings
+    ESP32FwUploader.setDebug(true);
+    ESP32FwUploader.setDarkMode(false);
+    ESP32FwUploader.setAuth(OTA_USERNAME, OTA_PASSWORD);
+    ESP32FwUploader.setAutoReboot(true);
+
+    ESP32FwUploader.onStart([]() {
+        Serial.println("[OTA] Started");
+    });
+
+    ESP32FwUploader.onProgress([](size_t current, size_t total) {
+        if (total > 0) {
+            float progress = (float)current / (float)total * 100.0f;
+            Serial.printf("[OTA] Progress: %.1f%% (%u/%u bytes)\n", progress, (unsigned)current, (unsigned)total);
+        } else {
+            Serial.printf("[OTA] Progress: %u bytes\n", (unsigned)current);
+        }
+    });
+
+    ESP32FwUploader.onEnd([](bool success) {
+        Serial.printf("[OTA] End: %s\n", success ? "SUCCESS" : "FAILED");
+        if (!success) {
+            Serial.println("[OTA] Error: " + ESP32FwUploader.getLastErrorMessage());
+        }
+    });
+
+    ESP32FwUploader.onError([](ESP32Fw_Error error, const String& message) {
+        Serial.printf("[OTA] Error %d: %s\n", error, message.c_str());
+    });
+
+    // Start ESP32FwUploader on a separate port
+    ESP32FwUploader.begin(&otaServer);
+    otaServer.begin();
+
+    // Configure uploader callbacks before begin()
     configureUploader();
     
-    // Start uploader
-    if (uploader.begin(80, "/uploads")) {  // File upload on standard port 80
+    // Start uploader (internal server on port 80)
+    if (uploader.begin(80, "/uploads")) {
         currentState = STATE_RUNNING;
         statusMessage = "Server started";
         displayMessage("Ready!");
@@ -166,14 +212,17 @@ void setup() {
 }
 
 // ========================================================================
-// Main Loop
-// =========================================================================
+// Main loop
+// ========================================================================
 void loop() {
 
     // Handle client requests
     if (currentState == STATE_RUNNING || currentState == STATE_UPLOADING) {
         uploader.handleClient();
+        otaServer.handleClient();
     }
+
+    ESP32FwUploader.loop();
     
     // Button handling
     handleButtons();
@@ -189,8 +238,8 @@ void loop() {
 
 #ifdef APMODE
 // ========================================================================
-// Start AP Mode
-// =========================================================================
+// Start AP mode
+// ========================================================================
 void startAPMode() {
     Serial.println("Starting Access Point Mode...");
     
@@ -216,8 +265,8 @@ void startAPMode() {
 #else
 
 // ========================================================================
-// WiFi Connection
-// =========================================================================
+// WiFi connection
+// ========================================================================
 void connectWiFi() {
     currentState = STATE_WIFI_CONNECTING;
     displayMessage("Connecting to WiFi...");
@@ -246,8 +295,8 @@ void connectWiFi() {
 #endif
 
 // ========================================================================
-// Upload Callback Functions
-// =========================================================================
+// Upload callback functions
+// ========================================================================
 void onUploadStart(const char* filename, uint32_t filesize) {
     Serial.printf("[UPLOAD] Started: %s (%d bytes)\n", filename, filesize);
 //    displayMessage("Uploading: " + String(filename));
@@ -276,19 +325,19 @@ void onUploadComplete(const char* filename, uint32_t filesize, bool success) {
 }
 
 // ========================================================================
-// Uploader Configuration
-// =========================================================================
+// Uploader configuration
+// ========================================================================
 void configureUploader() {
-    // Configure upload callbacks
+    // Upload callbacks
     uploader.onUploadStart(onUploadStart);
     uploader.onUploadComplete(onUploadComplete);
     
     Serial.println("[CONFIG] Upload callbacks configured");
     
-    // Set debug level
-    uploader.setDebugLevel(3);  // Verbose logging
+    // Debug level
+    uploader.setDebugLevel(3);  // Verbose log
     
-    // Set maximum file size (50MB)
+    // Max file size (50MB)
     uploader.setMaxFileSize(50 * 1024 * 1024);
     
 #ifdef APMODE
@@ -321,7 +370,7 @@ void initializeOLED() {
         return;
     }
 
-    oled.setRotation(2);  // 180 degree rotation
+    oled.setRotation(2);  // Rotate 180 degrees
     oled.clearDisplay();
     oled.setTextSize(1);
     oled.setTextColor(SSD1306_WHITE);
@@ -376,7 +425,7 @@ void renderOLED() {
 }
 
 // ========================================================================
-// Display Functions
+// Display functions
 // ========================================================================
 void displayHeader() {
 #ifdef APMODE
@@ -394,14 +443,14 @@ void displayMessage(String msg) {
 }
 
 // ========================================================================
-// Button Handling
+// Button handling
 // ========================================================================
 void handleButtons() {
-    // Add as needed
+    // Add if needed
 }
 
 // ========================================================================
-// Display Functions
+// Display functions
 // ========================================================================
 void displayServerInfo() {
 #ifdef APMODE
@@ -425,13 +474,21 @@ void displayServerInfo() {
     } else {
         Serial.println("WebSocket: Disabled");
     }
+
+#ifdef APMODE
+    Serial.printf("OTA URL: http://%s:%u/update\n", WiFi.softAPIP().toString().c_str(), OTA_PORT);
+#else
+    Serial.printf("OTA URL: http://%s:%u/update\n", WiFi.localIP().toString().c_str(), OTA_PORT);
+#endif
+    Serial.printf("OTA Username: %s\n", OTA_USERNAME);
+    Serial.printf("OTA Password: %s\n", OTA_PASSWORD);
 }
 
 
 void displayUploadStatus(const char* filename, uint32_t uploaded, uint32_t total) {
     Serial.printf("Uploading: %s", filename);
     Serial.println();
-    // Progress calculation
+    // Progress
     uint8_t progress = (total > 0) ? (uploaded * 100) / total : 0;
     Serial.printf("Progress: %d%%", progress);
     Serial.println();
@@ -486,10 +543,10 @@ void updateDisplay() {
 }
 
 // ========================================================================
-// LED Control
-// =========================================================================
+// LED control
+// ========================================================================
 
-// Timer callback function
+// Timer callback
 void ledTimerCallback(void* arg) {
     ledState = !ledState;
     
@@ -531,7 +588,7 @@ void initLEDTimer() {
     };
     
     esp_timer_create(&timerArgs, &ledTimer);
-    esp_timer_start_periodic(ledTimer, 500000);  // Initial 500ms interval
+    esp_timer_start_periodic(ledTimer, 500000);  // Initial interval: 500ms
 }
 
 void setLEDByState(AppState state) {
@@ -541,14 +598,14 @@ void setLEDByState(AppState state) {
     // Set blink interval
     switch (state) {
         case STATE_UPLOADING:
-            blinkInterval = 200000;  // 200ms (transfer)
+            blinkInterval = 200000;  // 200ms (during transfer)
             break;
         default:
             blinkInterval = 500000;  // 500ms (normal)
             break;
     }
     
-    // Reset timer
+    // Restart timer
     esp_timer_stop(ledTimer);
     esp_timer_start_periodic(ledTimer, blinkInterval);
     

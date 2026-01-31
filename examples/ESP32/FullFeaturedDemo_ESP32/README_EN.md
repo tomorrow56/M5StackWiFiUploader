@@ -48,7 +48,7 @@ For Arduino IDE:
 1. Open `Tools > Manage Libraries...`
 2. Search and install the following libraries:
    - `FastLED` by Daniel Garcia
-   - `M5StackWiFiUploader` (manual installation from GitHub)
+   - `M5StackWiFiUploader` by tomorrow56
 
 For PlatformIO:
 ```ini

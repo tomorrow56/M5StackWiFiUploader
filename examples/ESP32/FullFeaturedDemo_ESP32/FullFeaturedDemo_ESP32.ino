@@ -1,12 +1,12 @@
 /**
- * WiFi File Uploader - フル機能デモ
+ * WiFi File Uploader - Full Featured Demo
  * 
- * 機能:
- * - HTTP/WebSocketサーバー
- * - Serial Portへの状態表示
- * - エラーハンドリング
- * - 進行状況表示
- * - LED制御
+ * Features:
+ * - HTTP/WebSocket server
+ * - Status output via Serial Port
+ * - Error handling
+ * - Progress display
+ * - LED control
  */
 
 #include <WiFi.h>
@@ -14,32 +14,32 @@
 #include "M5StackWiFiUploader.h"
 #include "SDCardManager.h"
 
-// タイマー割り込み
+// Timer interrupt
 #include "esp_timer.h"
 #include "hal/timer_hal.h"
 
-// AP Mode設定
+// AP Mode setting
 // #define APMODE
 
-// WebSocket有効化
+// Enable WebSocket
 bool Websocket_Enabled = true;
 
 // ========================================================================
-// WiFi設定
+// WiFi Settings
 // ========================================================================
 #ifdef APMODE
-const char* AP_SSID = "M5Stack-AP";           // アクセスポイント名	 
-const char* AP_PASSWORD = "12345678";         // パスワード（8文字以上）	 
-const IPAddress AP_IP(192, 168, 4, 1);        // AP ModeのIPアドレス	 
-const IPAddress AP_GATEWAY(192, 168, 4, 1);   // ゲートウェイ	 
-const IPAddress AP_SUBNET(255, 255, 255, 0);  // サブネットマスク
+const char* AP_SSID = "M5Stack-AP";           // Access point name	 
+const char* AP_PASSWORD = "12345678";         // Password (8+ chars)	 
+const IPAddress AP_IP(192, 168, 4, 1);        // AP Mode IP address	 
+const IPAddress AP_GATEWAY(192, 168, 4, 1);   // Gateway	 
+const IPAddress AP_SUBNET(255, 255, 255, 0);  // Subnet mask
 #else
 const char* WIFI_SSID = "your_wifi_ssid";
 const char* WIFI_PASSWORD = "your_wifi_password";
 #endif
 
 // ========================================================================
-// SDカードSPI設定
+// SD Card SPI Settings
 // ========================================================================
 #define SD_CS 5
 #define SD_MOSI 23
@@ -47,23 +47,23 @@ const char* WIFI_PASSWORD = "your_wifi_password";
 #define SD_SCK 18
 
 // ========================================================================
-// LED設定 (WS2812B)
+// LED Settings (WS2812B)
 // ========================================================================
 #define LED_PIN 27
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
 
 // ========================================================================
-// グローバル変数
+// Global Variables
 // ========================================================================
 M5StackWiFiUploader uploader;
 
-// 状態管理
+// State management
 enum AppState {
     STATE_INIT,
     STATE_WIFI_CONNECTING,
     STATE_RUNNING,
-    STATE_UPLOADING,  // ファイル転送中
+    STATE_UPLOADING,  // File transfer in progress
     STATE_ERROR
 };
 
@@ -73,24 +73,24 @@ uint8_t activeUploads = 0;
 uint32_t totalUploaded = 0;
 String lastUploadedFile = "";
 
-// LED制御用タイマー
-volatile bool ledState = false;  // 点滅用フラグ（volatile）
-volatile bool isUploading = false;  // 転送中フラグ（volatile）
-volatile unsigned long blinkInterval = 500000;  // 点滅間隔（マイクロ秒）
+// LED control timer
+volatile bool ledState = false;  // Blink flag (volatile)
+volatile bool isUploading = false;  // Transfer in progress flag (volatile)
+volatile unsigned long blinkInterval = 500000;  // Blink interval (microseconds)
 esp_timer_handle_t ledTimer;
 
-// 画面更新タイマー
+// Display update timer
 unsigned long lastDisplayUpdate = 0;
 const unsigned long DISPLAY_UPDATE_INTERVAL = 500;
 
 // ========================================================================
-// セットアップ
+// Setup
 // ========================================================================
 void setup() {
     FastLED.addLeds<WS2812B, LED_PIN, RGB>(leds, NUM_LEDS);
     FastLED.setBrightness(10);
     
-    // LEDタイマー初期化
+    // Initialize LED timer
     initLEDTimer();
     
     Serial.begin(115200);
@@ -98,7 +98,7 @@ void setup() {
     displayHeader();
     displayMessage("Initializing SD Card...");
     
-    // SDカード初期化
+    // Initialize SD card
     if (!SDCardManager::initialize(SD_CS)) {
         currentState = STATE_ERROR;
         statusMessage = "SD Card initialization failed";
@@ -112,7 +112,7 @@ void setup() {
         delay(1000);
     }
     
-   // WiFi接続
+   // WiFi connection
     setLEDByState(STATE_WIFI_CONNECTING);
  
  #ifdef APMODE
@@ -123,11 +123,11 @@ void setup() {
     connectWiFi();
 #endif
     
-    // アップローダー設定（begin()の前にコールバックを設定）
+    // Uploader configuration (set callbacks before begin())
     configureUploader();
     
-    // アップローダー開始
-    if (uploader.begin(80, "/uploads")) {  // 標準ポート80でファイルアップロード
+    // Start uploader
+    if (uploader.begin(80, "/uploads")) {  // File upload on standard port 80
         currentState = STATE_RUNNING;
         statusMessage = "Server started";
         displayMessage("Ready!");
@@ -142,19 +142,19 @@ void setup() {
 }
 
 // ========================================================================
-// メインループ
+// Main Loop
 // ========================================================================
 void loop() {
 
-    // クライアントリクエスト処理
+    // Handle client requests
     if (currentState == STATE_RUNNING || currentState == STATE_UPLOADING) {
         uploader.handleClient();
     }
     
-    // ボタン処理
+    // Button handling
     handleButtons();
     
-    // 画面更新
+    // Display update
     if (millis() - lastDisplayUpdate > DISPLAY_UPDATE_INTERVAL) {
         updateDisplay();
         lastDisplayUpdate = millis();
@@ -165,16 +165,16 @@ void loop() {
 
 #ifdef APMODE
 // ========================================================================
-// APモード開始
-// ========================================================================
+// Start AP Mode
+// =========================================================================
 void startAPMode() {
     Serial.println("Starting Access Point Mode...");
     
-    // APモード設定
+    // Configure AP mode
     WiFi.mode(WIFI_AP);
     WiFi.softAPConfig(AP_IP, AP_GATEWAY, AP_SUBNET);
     
-    // AP開始
+    // Start AP
     bool success = WiFi.softAP(AP_SSID, AP_PASSWORD);
     
     if (success) {
@@ -192,8 +192,8 @@ void startAPMode() {
 #else
 
 // ========================================================================
-// WiFi接続
-// ========================================================================
+// WiFi Connection
+// =========================================================================
 void connectWiFi() {
     currentState = STATE_WIFI_CONNECTING;
     displayMessage("Connecting to WiFi...");
@@ -222,7 +222,7 @@ void connectWiFi() {
 #endif
 
 // ========================================================================
-// アップロードコールバック関数
+// Upload Callback Functions
 // ========================================================================
 void onUploadStart(const char* filename, uint32_t filesize) {
     Serial.printf("[UPLOAD] Started: %s (%d bytes)\n", filename, filesize);
@@ -249,32 +249,32 @@ void onUploadComplete(const char* filename, uint32_t filesize, bool success) {
 }
 
 // ========================================================================
-// アップローダー設定
-// ========================================================================
+// Uploader Configuration
+// =========================================================================
 void configureUploader() {
-    // アップロードコールバック設定
+    // Configure upload callbacks
     uploader.onUploadStart(onUploadStart);
     uploader.onUploadComplete(onUploadComplete);
     
     Serial.println("[CONFIG] Upload callbacks configured");
     
-    // デバッグレベル設定
-    uploader.setDebugLevel(3);  // 詳細ログ
+    // Set debug level
+    uploader.setDebugLevel(3);  // Verbose logging
     
-    // 最大ファイルサイズ設定（50MB）
+    // Set maximum file size (50MB)
     uploader.setMaxFileSize(50 * 1024 * 1024);
     
 #ifdef APMODE
-    // APモードではWebSocketを無効化
+    // Disable WebSocket in AP mode
     Websocket_Enabled = false;
     uploader.enableWebSocket(false);
 #else
-    // WebSocket有効化
+    // Enable WebSocket
     Websocket_Enabled = true;
     uploader.enableWebSocket(true);
 #endif
     
-    // 許可拡張子
+    // Allowed extensions
     const char* extensions[] = {
         "jpg", "jpeg", "png", "gif", "bmp",
         "bin", "dat", "txt", "csv", "json",
@@ -287,8 +287,8 @@ void configureUploader() {
 }
 
 // ========================================================================
-// 画面表示関数
-// ========================================================================
+// Display Functions
+// =========================================================================
 void displayHeader() {
 #ifdef APMODE
     Serial.println("WiFi File Uploader (AP Mode)");
@@ -302,14 +302,14 @@ void displayMessage(String msg) {
 }
 
 // ========================================================================
-// ボタン処理
+// Button Handling
 // ========================================================================
 void handleButtons() {
-    // 必要に応じて追加してください
+    // Add as needed
 }
 
 // ========================================================================
-// 画面表示関数
+// Display Functions
 // ========================================================================
 void displayServerInfo() {
 #ifdef APMODE
@@ -384,7 +384,7 @@ void displayStatus() {
 }
 
 void updateDisplay() {
-    // ステータスバー更新
+    // Status bar update
     Serial.printf("Active: %d | Total: %d KB", 
                  uploader.getActiveUploads(),
                  uploader.getTotalUploaded() / 1024);
@@ -392,26 +392,26 @@ void updateDisplay() {
 }
 
 // ========================================================================
-// LED制御
-// ========================================================================
+// LED Control
+// =========================================================================
 
-// タイマーコールバック関数
+// Timer callback function
 void ledTimerCallback(void* arg) {
     ledState = !ledState;
     
-    // LED制御
+    // LED control
     switch (currentState) {
         case STATE_INIT:
-            leds[0] = CRGB::Blue;  // 常時点灯
+            leds[0] = CRGB::Blue;  // Solid
             break;
         case STATE_WIFI_CONNECTING:
             leds[0] = ledState ? CRGB::Yellow : CRGB::Black;
             break;
         case STATE_UPLOADING:
 #ifdef APMODE
-            leds[0] = ledState ? CRGB::Cyan : CRGB::Black;  // 転送中は点滅
+            leds[0] = ledState ? CRGB::Cyan : CRGB::Black;  // Blink during transfer
 #else
-            leds[0] = ledState ? CRGB::Green : CRGB::Black;  // 転送中は点滅
+            leds[0] = ledState ? CRGB::Green : CRGB::Black;  // Blink during transfer
 #endif
             break;
         case STATE_ERROR:
@@ -419,9 +419,9 @@ void ledTimerCallback(void* arg) {
             break;
         case STATE_RUNNING:
 #ifdef APMODE
-            leds[0] = CRGB::Cyan;  // 常時点灯
+            leds[0] = CRGB::Cyan;  // Solid
 #else
-            leds[0] = CRGB::Green;  // 常時点灯
+            leds[0] = CRGB::Green;  // Solid
 #endif
             break;
     }
@@ -429,7 +429,7 @@ void ledTimerCallback(void* arg) {
     FastLED.show();
 }
 
-// LEDタイマー初期化
+// Initialize LED timer
 void initLEDTimer() {
     esp_timer_create_args_t timerArgs = {
         .callback = &ledTimerCallback,
@@ -437,28 +437,28 @@ void initLEDTimer() {
     };
     
     esp_timer_create(&timerArgs, &ledTimer);
-    esp_timer_start_periodic(ledTimer, 500000);  // 初期は500ms間隔
+    esp_timer_start_periodic(ledTimer, 500000);  // Initial 500ms interval
 }
 
 void setLEDByState(AppState state) {
     currentState = state;
     ledState = false;
     
-    // 点滅間隔を設定
+    // Set blink interval
     switch (state) {
         case STATE_UPLOADING:
-            blinkInterval = 200000;  // 200ms（転送中）
+            blinkInterval = 200000;  // 200ms (transfer)
             break;
         default:
-            blinkInterval = 500000;  // 500ms（通常）
+            blinkInterval = 500000;  // 500ms (normal)
             break;
     }
     
-    // タイマーを再設定
+    // Reset timer
     esp_timer_stop(ledTimer);
     esp_timer_start_periodic(ledTimer, blinkInterval);
     
-    // デバッグ出力
+    // Debug output
     Serial.printf("[LED] State changed to: %d\n", state);
     
 }
